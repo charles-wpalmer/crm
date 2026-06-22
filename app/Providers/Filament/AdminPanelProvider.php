@@ -61,7 +61,12 @@ class AdminPanelProvider extends PanelProvider
             ->authMiddleware([
                 Authenticate::class,
                 SetActiveIndustry::class,
-            ])->renderHook(
+            ])
+            ->brandLogo(asset('images/applebough.png'))
+            //->brandLogoDarkMode(asset('images/logo-dark.svg'))
+            ->brandLogoHeight('3rem')
+            //->favicon(asset('images/logo-icon.svg'))
+            ->renderHook(
                 PanelsRenderHook::HEAD_END,
                 fn () => new HtmlString("
                     <script>

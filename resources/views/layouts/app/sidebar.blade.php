@@ -5,8 +5,14 @@
     </head>
     <body class="min-h-screen bg-white dark:bg-zinc-800">
         <flux:sidebar sticky collapsible="mobile" class="border-e border-zinc-200 bg-zinc-50 dark:border-zinc-700 dark:bg-zinc-900">
-            <flux:sidebar.header>
-                <x-app-logo :sidebar="true" href="{{ route('dashboard') }}" wire:navigate />
+            <flux:sidebar.header class="py-3">
+                <a href="{{ route('dashboard') }}" wire:navigate>
+                    <img
+                        src="{{ asset('images/applebough.png') }}"
+                        alt="{{ config('app.name') }}"
+                        class="w-36 h-auto object-contain"
+                    />
+                </a>
                 <flux:sidebar.collapse class="lg:hidden" />
             </flux:sidebar.header>
 
