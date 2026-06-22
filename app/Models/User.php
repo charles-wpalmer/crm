@@ -76,3 +76,4 @@ class User extends Authenticatable implements FilamentUser, PasskeyUser
         return true;
     }
 }
+

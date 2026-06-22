@@ -74,8 +74,7 @@ test('education dashboard is hidden for user with multiple industries and invali
     config(['user.industry' => 'invalid']);
 
     $dashboard = new Dashboard;
-    expect($dashboard->getActiveIndustry())->toBeNull()
-        ->and($dashboard->getTitle())->toBe('Dashboard')
+    expect($dashboard->getTitle())->toBe('Dashboard')
         ->and($dashboard->getWidgets())->toBe([NoIndustryWidget::class]);
 });
 

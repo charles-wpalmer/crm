@@ -64,4 +64,9 @@ class EmailTemplateResource extends Resource
             ->where('company_id', auth()->user()->company_id)
             ->where('industry_id', active_industry_id());
     }
+
+    public static function canViewAny(): bool
+    {
+        return active_industry() !== null;
+    }
 }
