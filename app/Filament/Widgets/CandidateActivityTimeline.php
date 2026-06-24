@@ -34,13 +34,16 @@ class CandidateActivityTimeline extends Widget implements HasActions, HasForms
     {
         return Action::make('logActivity')
             ->label('Log Activity')
+            ->icon('heroicon-o-plus')
+            ->color('gray')
             ->modalHeading('Log Activity')
             ->modalWidth('md')
-            ->form([
+            ->schema([
                 Select::make('type')
-                    ->options([
+                    ->options(options: [
                         ActivityType::Call->value => ActivityType::Call->label(),
                         ActivityType::Note->value => ActivityType::Note->label(),
+                        ActivityType::Meeting->value => ActivityType::Meeting->label(),
                         ActivityType::Other->value => ActivityType::Other->label(),
                     ])
                     ->required(),

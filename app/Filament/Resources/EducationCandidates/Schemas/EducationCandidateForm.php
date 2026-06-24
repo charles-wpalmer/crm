@@ -5,6 +5,7 @@ namespace App\Filament\Resources\EducationCandidates\Schemas;
 use App\Enums\Education\Availability;
 use App\Enums\Education\KeyStage;
 use App\Filament\Widgets\CandidateActivityTimeline;
+use App\Models\CandidateSkill;
 use App\Models\Qualification;
 use App\Models\User;
 use Filament\Forms\Components\CheckboxList;
@@ -17,6 +18,8 @@ use Filament\Schemas\Components\Livewire as LivewireComponent;
 use Filament\Schemas\Components\Section;
 use Filament\Schemas\Components\Tabs;
 use Filament\Schemas\Components\Tabs\Tab;
+use Filament\Schemas\Components\Utilities\Get;
+use Filament\Schemas\Components\Utilities\Set;
 use Filament\Schemas\Schema;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Support\Facades\Auth;
@@ -68,9 +71,9 @@ class EducationCandidateForm
                                             ]),
                                         TextInput::make('nationality')
                                             ->maxLength(255),
-                                        DatePicker::make('date_of_birth'),
-                                        TextInput::make('place_of_birth')
-                                            ->maxLength(255),
+                                        DatePicker::make('date_of_birth')
+                                            ->label('Date of Birth')
+                                            ->native(false),
                                         Select::make('consultant_id')
                                             ->label('Consultant')
                                             ->options(fn (): array => User::role('consultant')
@@ -90,10 +93,18 @@ class EducationCandidateForm
                                             ->maxLength(255),
                                         TextInput::make('phone')
                                             ->tel()
-                                            ->maxLength(255),
+                                            ->maxLength(255)
+                                            ->rule('regex:/^(\+44\s?7\d{3}|\(?07\d{3}\)?)\s?\d{3}\s?\d{3}$/')
+                                            ->validationMessages([
+                                                'regex' => 'Please enter a valid UK mobile number.',
+                                            ]),
                                         TextInput::make('mobile')
                                             ->tel()
-                                            ->maxLength(255),
+                                            ->maxLength(255)
+                                            ->rule('regex:/^(\+44\s?7\d{3}|\(?07\d{3}\)?)\s?\d{3}\s?\d{3}$/')
+                                            ->validationMessages([
+                                                'regex' => 'Please enter a valid UK mobile number.',
+                                            ]),
                                     ]),
 
                                 Section::make('Address')
@@ -144,6 +155,34 @@ class EducationCandidateForm
 
                                 RichEditor::make('employment_history')
                                     ->label('Employment History')
+                                    ->columnSpanFull(),
+                                Select::make('skills')
+                                    ->label('Skills')
+                                    ->multiple()
+                                    ->relationship(
+                                        name: 'skills',
+                                        titleAttribute: 'name',
+                                        modifyQueryUsing: fn ($query) => $query
+                                            ->where('candidate_skills.company_id', Auth::user()->company_id)
+                                            ->where('candidate_skills.industry_id', active_industry_id())
+                                            ->orderByRaw('COALESCE(parent_id, candidate_skills.id), parent_id IS NOT NULL, candidate_skills.name'),
+                                    )
+                                    ->getOptionLabelFromRecordUsing(fn (CandidateSkill $record): string => $record->parent_id
+                                        ? '↳ '.$record->name
+                                        : $record->name
+                                    )
+                                    ->searchable()
+                                    ->preload()
+                                    ->live()
+                                    ->afterStateUpdated(function (Set $set, Get $get): void {
+                                        $selectedIds = collect($get('skills') ?? []);
+
+                                        $parentIds = CandidateSkill::whereIn('id', $selectedIds)
+                                            ->whereNotNull('parent_id')
+                                            ->pluck('parent_id');
+
+                                        $set('skills', $selectedIds->merge($parentIds)->unique()->values()->all());
+                                    })
                                     ->columnSpanFull(),
 
                                 CheckboxList::make('availability')
