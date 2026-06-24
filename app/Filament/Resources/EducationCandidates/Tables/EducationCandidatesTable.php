@@ -9,8 +9,10 @@ use Filament\Actions\ForceDeleteBulkAction;
 use Filament\Actions\RestoreBulkAction;
 use Filament\Actions\ViewAction;
 use Filament\Tables\Columns\TextColumn;
+use Filament\Tables\Filters\SelectFilter;
 use Filament\Tables\Filters\TrashedFilter;
 use Filament\Tables\Table;
+use Illuminate\Database\Eloquent\Builder;
 
 class EducationCandidatesTable
 {
@@ -18,7 +20,12 @@ class EducationCandidatesTable
     {
         return $table
             ->columns([
-                TextColumn::make('name')
+                TextColumn::make('first_name')
+                    ->label('First Name')
+                    ->searchable()
+                    ->sortable(),
+                TextColumn::make('last_name')
+                    ->label('Last Name')
                     ->searchable()
                     ->sortable(),
                 TextColumn::make('email')
@@ -43,6 +50,20 @@ class EducationCandidatesTable
                     }),
             ])
             ->filters([
+                SelectFilter::make('application_status')
+                    ->label('Application Status')
+                    ->options([
+                        'pending' => 'Pending',
+                        'completed' => 'Completed',
+                        'expired' => 'Expired',
+                    ])
+                    ->query(fn (Builder $query, array $data) =>
+                        $query->when($data['value'], fn ($q, $value) =>
+                            $q->whereHas('application', fn ($q) =>
+                                $q->where('status', $value)
+                            )
+                        )
+                    ),
                 TrashedFilter::make(),
             ])
             ->recordActions([
