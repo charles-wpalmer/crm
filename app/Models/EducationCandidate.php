@@ -3,11 +3,11 @@
 namespace App\Models;
 
 use App\Models\Traits\BelongsToCompany;
-use Attribute;
 use Database\Factories\EducationCandidateFactory;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Database\Eloquent\Relations\BelongsToMany;
 use Illuminate\Database\Eloquent\Relations\HasOne;
 use Illuminate\Database\Eloquent\Relations\MorphMany;
 use Illuminate\Database\Eloquent\SoftDeletes;
@@ -43,6 +43,11 @@ class EducationCandidate extends Model
     public function qualification(): BelongsTo
     {
         return $this->belongsTo(Qualification::class);
+    }
+
+    public function skills(): BelongsToMany
+    {
+        return $this->belongsToMany(CandidateSkill::class, 'education_candidate_skills');
     }
 
     public function activities(): MorphMany

@@ -10,7 +10,6 @@ use Filament\Actions\DeleteBulkAction;
 use Filament\Actions\EditAction;
 use Filament\Forms\Components\TextInput;
 use Filament\Tables\Columns\TextColumn;
-use Filament\Tables\Filters\SelectFilter;
 use Filament\Tables\Table;
 use Illuminate\Support\Facades\Auth;
 
@@ -27,28 +26,13 @@ class CandidateSkillsTable
                     )
                     ->searchable(),
 
-                TextColumn::make('sector')
-                    ->placeholder('—')
-                    ->searchable(),
-
                 TextColumn::make('children_count')
                     ->label('Sub-skills')
                     ->counts('children')
                     ->badge()
                     ->color('gray'),
             ])
-            ->filters([
-                SelectFilter::make('sector')
-                    ->options(fn (): array => CandidateSkill::query()
-                        ->where('company_id', Auth::user()->company_id)
-                        ->where('industry_id', active_industry_id())
-                        ->whereNotNull('sector')
-                        ->distinct()
-                        ->orderBy('sector')
-                        ->pluck('sector', 'sector')
-                        ->toArray()
-                    ),
-            ])
+            ->filters([])
             ->recordActions([
                 Action::make('add_child')
                     ->label('Add sub-skill')
@@ -60,9 +44,6 @@ class CandidateSkillsTable
                         TextInput::make('name')
                             ->required()
                             ->maxLength(255),
-
-                        TextInput::make('sector')
-                            ->maxLength(255),
                     ])
                     ->action(function (CandidateSkill $record, array $data): void {
                         CandidateSkill::create([
@@ -70,7 +51,6 @@ class CandidateSkillsTable
                             'industry_id' => active_industry_id(),
                             'parent_id' => $record->id,
                             'name' => $data['name'],
-                            'sector' => $data['sector'] ?? null,
                         ]);
                     }),
 

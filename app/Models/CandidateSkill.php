@@ -7,6 +7,7 @@ use Database\Factories\CandidateSkillFactory;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Database\Eloquent\Relations\BelongsToMany;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 
 class CandidateSkill extends Model
@@ -26,6 +27,11 @@ class CandidateSkill extends Model
     public function children(): HasMany
     {
         return $this->hasMany(CandidateSkill::class, 'parent_id')->withoutGlobalScopes();
+    }
+
+    public function candidates(): BelongsToMany
+    {
+        return $this->belongsToMany(EducationCandidate::class, 'education_candidate_skills');
     }
 
     public function industry(): BelongsTo

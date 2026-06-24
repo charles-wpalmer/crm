@@ -20,7 +20,6 @@ class CandidateSkillFactory extends Factory
         return [
             'company_id' => Company::factory(),
             'industry_id' => Industry::factory(),
-            'sector' => null,
             'name' => fake()->words(2, true),
             'parent_id' => null,
         ];

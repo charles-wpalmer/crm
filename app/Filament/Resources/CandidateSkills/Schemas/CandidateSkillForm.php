@@ -17,9 +17,6 @@ class CandidateSkillForm
                 ->required()
                 ->maxLength(255),
 
-            TextInput::make('sector')
-                ->maxLength(255),
-
             Select::make('parent_id')
                 ->label('Parent skill')
                 ->options(fn (?CandidateSkill $record): array => CandidateSkill::query()

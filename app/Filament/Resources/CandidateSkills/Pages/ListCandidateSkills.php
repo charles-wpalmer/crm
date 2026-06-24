@@ -26,9 +26,6 @@ class ListCandidateSkills extends ListRecords
                         ->required()
                         ->maxLength(255),
 
-                    TextInput::make('sector')
-                        ->maxLength(255),
-
                     Select::make('parent_id')
                         ->label('Parent skill')
                         ->options(fn (): array => CandidateSkill::query()

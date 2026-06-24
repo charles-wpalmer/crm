@@ -35,4 +35,7 @@ return [
         ],
     ],
 
+    'getaddress' => [
+        'key' => env('GETADDRESS_API_KEY', 'sV_mZKu76UCJwr42gnZitw52769'),
+    ],
 ];
