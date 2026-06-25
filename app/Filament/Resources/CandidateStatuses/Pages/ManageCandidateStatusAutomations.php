@@ -113,9 +113,7 @@ class ManageCandidateStatusAutomations extends Page implements HasTable
         ];
     }
 
-    /**
-     * @return array
-     */
+    /** @return list<Select> */
     private function automationFormSchema(): array
     {
         $statuses = CandidateStatus::query()
@@ -125,10 +123,8 @@ class ManageCandidateStatusAutomations extends Page implements HasTable
             ->pluck('name', 'id')
             ->toArray();
 
-        $fieldSuggestions = array_combine(
-            Industry::find(active_industry_id())?->candidateFieldSuggestions() ?? [],
-            Industry::find(active_industry_id())?->candidateFieldSuggestions() ?? [],
-        );
+        $suggestions = Industry::query()->find(active_industry_id())?->candidateFieldSuggestions() ?? [];
+        $fieldSuggestions = $suggestions ? array_combine($suggestions, $suggestions) : [];
 
         return [
             Select::make('candidate_status_id')
