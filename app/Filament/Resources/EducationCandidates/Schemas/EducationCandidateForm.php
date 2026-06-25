@@ -8,6 +8,7 @@ use App\Filament\Widgets\CandidateActivityTimeline;
 use App\Models\CandidateSkill;
 use App\Models\Qualification;
 use App\Models\User;
+use Filament\Actions\Action;
 use Filament\Forms\Components\CheckboxList;
 use Filament\Forms\Components\DatePicker;
 use Filament\Forms\Components\Hidden;
@@ -15,6 +16,7 @@ use Filament\Forms\Components\RichEditor;
 use Filament\Forms\Components\Select;
 use Filament\Forms\Components\Textarea;
 use Filament\Forms\Components\TextInput;
+use Filament\Schemas\Components\Actions;
 use Filament\Schemas\Components\Livewire as LivewireComponent;
 use Filament\Schemas\Components\Section;
 use Filament\Schemas\Components\Tabs;
@@ -49,11 +51,11 @@ class EducationCandidateForm
                                     ->schema([
                                         Select::make('title')
                                             ->options([
-                                                'Mr' => 'Mr',
-                                                'Mrs' => 'Mrs',
+                                                'Mr'   => 'Mr',
+                                                'Mrs'  => 'Mrs',
                                                 'Miss' => 'Miss',
-                                                'Ms' => 'Ms',
-                                                'Dr' => 'Dr',
+                                                'Ms'   => 'Ms',
+                                                'Dr'   => 'Dr',
                                                 'Prof' => 'Prof',
                                             ]),
                                         TextInput::make('first_name')
@@ -66,9 +68,9 @@ class EducationCandidateForm
                                             ->maxLength(255),
                                         Select::make('gender')
                                             ->options([
-                                                'male' => 'Male',
-                                                'female' => 'Female',
-                                                'non_binary' => 'Non-binary',
+                                                'male'              => 'Male',
+                                                'female'            => 'Female',
+                                                'non_binary'        => 'Non-binary',
                                                 'prefer_not_to_say' => 'Prefer not to say',
                                             ]),
                                         TextInput::make('nationality')
@@ -112,29 +114,51 @@ class EducationCandidateForm
                                 Section::make('Address')
                                     ->columns(2)
                                     ->schema([
+                                        Hidden::make('address_manual')
+                                            ->default(false)
+                                            ->dehydrated(false),
+
+                                        Hidden::make('address_suggestions')
+                                            ->dehydrated(false),
+
+                                        Actions::make([
+                                            Action::make('toggle_manual')
+                                                ->label(fn (Get $get) => $get('address_manual')
+                                                    ? 'Search address instead'
+                                                    : 'Enter address manually'
+                                                )
+                                                ->icon(fn (Get $get) => $get('address_manual')
+                                                    ? 'heroicon-o-magnifying-glass'
+                                                    : 'heroicon-o-pencil'
+                                                )
+                                                ->color('gray')
+                                                ->action(function (Get $get, Set $set) {
+                                                    $set('address_manual', ! $get('address_manual'));
+                                                }),
+                                        ])->columnSpanFull(),
+
                                         TextInput::make('address_search')
                                             ->label('Search Address')
                                             ->placeholder('Start typing an address or postcode...')
                                             ->prefixIcon('heroicon-o-magnifying-glass')
                                             ->live(debounce: 500)
+                                            ->hidden(fn (Get $get) => (bool) $get('address_manual'))
                                             ->afterStateUpdated(function (Get $get, Set $set, ?string $state) {
                                                 if (! $state || strlen($state) < 3) {
                                                     $set('address_suggestions', []);
-
                                                     return;
                                                 }
 
                                                 $response = Http::withHeaders([
-                                                    'X-Goog-Api-Key' => config('services.google.places_key'),
+                                                    'X-Goog-Api-Key'   => config('services.google.places_key'),
                                                     'X-Goog-FieldMask' => 'suggestions.placePrediction.placeId,suggestions.placePrediction.text',
                                                 ])->post('https://places.googleapis.com/v1/places:autocomplete', [
-                                                    'input' => $state,
+                                                    'input'               => $state,
                                                     'includedRegionCodes' => ['gb'],
                                                 ]);
 
                                                 if ($response->failed()) {
                                                     $set('address_suggestions', []);
-
                                                     return;
                                                 }
 
@@ -153,19 +177,16 @@ class EducationCandidateForm
                                             ->label('Select Address')
                                             ->options(fn (Get $get) => $get('address_suggestions') ?? [])
                                             ->live()
+                                            ->hidden(fn (Get $get) => empty($get('address_suggestions')) || (bool) $get('address_manual'))
                                             ->afterStateUpdated(function (Get $get, Set $set, ?string $state) {
-                                                if (! $state) {
-                                                    return;
-                                                }
+                                                if (! $state) return;
 
                                                 $response = Http::withHeaders([
-                                                    'X-Goog-Api-Key' => config('services.google.places_key'),
+                                                    'X-Goog-Api-Key'   => config('services.google.places_key'),
                                                     'X-Goog-FieldMask' => 'addressComponents,formattedAddress',
                                                 ])->get("https://places.googleapis.com/v1/places/{$state}");
 
-                                                if ($response->failed()) {
-                                                    return;
-                                                }
+                                                if ($response->failed()) return;
 
                                                 $components = collect($response->json('addressComponents') ?? []);
 
@@ -173,7 +194,7 @@ class EducationCandidateForm
                                                     ->first(fn ($c) => in_array($type, $c['types'] ?? []))['longText'] ?? '';
 
                                                 $streetNumber = $getComponent('street_number');
-                                                $route = $getComponent('route');
+                                                $route        = $getComponent('route');
 
                                                 $set('address', collect([$streetNumber, $route])->filter()->implode(' '));
                                                 $set('city', $getComponent('postal_town') ?: $getComponent('locality'));
@@ -184,32 +205,28 @@ class EducationCandidateForm
                                                 $set('address_suggestions', []);
                                             })
                                             ->placeholder('Select an address...')
-                                            ->hidden(fn (Get $get) => empty($get('address_suggestions')))
                                             ->dehydrated(false)
                                             ->columnSpanFull(),
 
-                                        Hidden::make('address_suggestions')
-                                            ->dehydrated(false),
-
                                         Textarea::make('address')
                                             ->columnSpanFull()
-                                            ->hidden(fn (Get $get) => empty($get('address')) && empty($get('postcode'))),
+                                            ->hidden(fn (Get $get) => ! (bool) $get('address_manual') && empty($get('address')) && empty($get('postcode'))),
 
                                         TextInput::make('postcode')
                                             ->maxLength(255)
-                                            ->hidden(fn (Get $get) => empty($get('address')) && empty($get('postcode'))),
+                                            ->hidden(fn (Get $get) => ! (bool) $get('address_manual') && empty($get('address')) && empty($get('postcode'))),
 
                                         TextInput::make('city')
                                             ->maxLength(255)
-                                            ->hidden(fn (Get $get) => empty($get('address')) && empty($get('postcode'))),
+                                            ->hidden(fn (Get $get) => ! (bool) $get('address_manual') && empty($get('address')) && empty($get('postcode'))),
 
                                         TextInput::make('county')
                                             ->maxLength(255)
-                                            ->hidden(fn (Get $get) => empty($get('address')) && empty($get('postcode'))),
+                                            ->hidden(fn (Get $get) => ! (bool) $get('address_manual') && empty($get('address')) && empty($get('postcode'))),
 
                                         TextInput::make('country')
                                             ->maxLength(255)
-                                            ->hidden(fn (Get $get) => empty($get('address')) && empty($get('postcode'))),
+                                            ->hidden(fn (Get $get) => ! (bool) $get('address_manual') && empty($get('address')) && empty($get('postcode'))),
                                     ]),
 
                                 Section::make('Emergency Contact')
@@ -260,7 +277,7 @@ class EducationCandidateForm
                                             ->orderByRaw('COALESCE(parent_id, candidate_skills.id), parent_id IS NOT NULL, candidate_skills.name'),
                                     )
                                     ->getOptionLabelFromRecordUsing(fn (CandidateSkill $record): string => $record->parent_id
-                                        ? '↳ '.$record->name
+                                        ? '↳ ' . $record->name
                                         : $record->name
                                     )
                                     ->searchable()
