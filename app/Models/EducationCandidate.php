@@ -11,6 +11,7 @@ use Illuminate\Database\Eloquent\Relations\BelongsToMany;
 use Illuminate\Database\Eloquent\Relations\HasOne;
 use Illuminate\Database\Eloquent\Relations\MorphMany;
 use Illuminate\Database\Eloquent\SoftDeletes;
+use Illuminate\Support\Facades\Schema;
 
 class EducationCandidate extends Model
 {
@@ -32,6 +33,23 @@ class EducationCandidate extends Model
         'longitude' => 'float',
     ];
 
+    /** @return array<int, string> */
+    public static function candidateFieldSuggestions(): array
+    {
+        $excluded = ['id', 'company_id', 'created_at', 'updated_at', 'deleted_at'];
+
+        $columns = collect(Schema::getColumnListing((new static)->getTable()))
+            ->reject(fn (string $col) => in_array($col, $excluded))
+            ->values()
+            ->toArray();
+
+        $relationships = collect(['skills', 'application', 'qualification'])
+            ->map(fn (string $rel) => "{$rel}.*")
+            ->toArray();
+
+        return array_merge($columns, $relationships);
+    }
+
     public function application(): HasOne
     {
         return $this->hasOne(EducationApplication::class);
@@ -50,6 +68,11 @@ class EducationCandidate extends Model
     public function skills(): BelongsToMany
     {
         return $this->belongsToMany(CandidateSkill::class, 'education_candidate_skills');
+    }
+
+    public function statuses(): MorphMany
+    {
+        return $this->morphMany(CandidateCandidateStatus::class, 'model')->latest();
     }
 
     public function activities(): MorphMany
