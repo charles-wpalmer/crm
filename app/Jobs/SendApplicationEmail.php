@@ -43,20 +43,21 @@ class SendApplicationEmail implements ShouldQueue
         try {
             $mailer = match ($this->candidate->company->email_provider) {
                 EmailProvider::Mailgun => new MailgunMailer,
-                default                => new MicrosoftGraphMailer,
+                default => new MicrosoftGraphMailer,
             };
 
             $mailer->send(
-                to:      $this->candidate->email,
+                to: $this->candidate->email,
                 subject: $this->replacePlaceholders($template->subject ?? ''),
-                body:    $this->replacePlaceholders($template->body ?? ''),
+                body: $this->replacePlaceholders($template->body ?? ''),
+                from: $this->candidate->consultant?->email,
             );
 
             $this->candidate->activities()->create([
-                'user_id'   => $this->candidate->consultant_id ?? auth()->id(),
-                'type'      => ActivityType::Email->value,
-                'note'      => 'Application pack sent',
-                'body'      => "Application email sent to {$this->candidate->email}",
+                'user_id' => $this->candidate->consultant_id ?? auth()->id(),
+                'type' => ActivityType::Email->value,
+                'note' => 'Application pack sent',
+                'body' => "Application email sent to {$this->candidate->email}",
                 'contacted' => true,
             ]);
         } catch (\Throwable $e) {

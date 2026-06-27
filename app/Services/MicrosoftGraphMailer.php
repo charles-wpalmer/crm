@@ -8,12 +8,14 @@ use RuntimeException;
 
 class MicrosoftGraphMailer
 {
-    public function send(string $to, string $subject, string $body): void
+    public function send(string $to, string $subject, string $body, ?string $from = null): void
     {
         $this->guardConfiguration();
 
+        $sender = $from ?? config('services.microsoft.sender_email');
+
         Http::withToken($this->accessToken())
-            ->post('https://graph.microsoft.com/v1.0/users/'.config('services.microsoft.sender_email').'/sendMail', [
+            ->post("https://graph.microsoft.com/v1.0/users/{$sender}/sendMail", [
                 'message' => [
                     'subject' => $subject,
                     'body' => [
