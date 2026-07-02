@@ -15,43 +15,44 @@
             @endforeach
         </flux:select>
 
-        <div class="grid grid-cols-2 gap-4">
-            <flux:select wire:model="employment_type" :label="__('What kind of employment are you seeking?')" placeholder="{{ __('Select…') }}">
-                @foreach(\App\Enums\Education\EmploymentType::cases() as $type)
-                    <flux:select.option value="{{ $type->value }}">{{ $type->label() }}</flux:select.option>
+        <flux:checkbox.group wire:model="availability" :label="__('Availability')">
+            <div class="grid grid-cols-2 gap-3">
+                @foreach(\App\Enums\Education\Availability::cases() as $option)
+                    <flux:checkbox value="{{ $option->value }}" :label="$option->label()" />
                 @endforeach
-            </flux:select>
-
-            <div
-                x-data="{
-                    fp: null,
-                    init() {
-                        this.fp = flatpickr(this.$refs.availableFromInput, {
-                            dateFormat: 'Y-m-d',
-                            minDate: 'today',
-                            allowInput: true,
-                            defaultDate: this.$refs.availableFromInput.value || null,
-                            onChange: (dates, dateStr) => {
-                                this.$refs.availableFromInput.value = dateStr;
-                                this.$refs.availableFromInput.dispatchEvent(new Event('input', { bubbles: true }));
-                            },
-                        });
-                        this.$watch('$wire.available_from', (value) => {
-                            if (this.fp) this.fp.setDate(value || null, false);
-                        });
-                    },
-                    destroy() {
-                        if (this.fp) this.fp.destroy();
-                    },
-                }"
-            >
-                <flux:input
-                    input:x-ref="availableFromInput"
-                    wire:model="available_from"
-                    :label="__('When can you start working with us?')"
-                    placeholder="YYYY-MM-DD"
-                />
             </div>
+        </flux:checkbox.group>
+
+        <div
+            x-data="{
+                fp: null,
+                init() {
+                    this.fp = flatpickr(this.$refs.availableFromInput, {
+                        dateFormat: 'M j, Y',
+                        disableMobile: true,
+                        minDate: 'today',
+                        allowInput: true,
+                        defaultDate: this.$refs.availableFromInput.value || null,
+                        onChange: (dates, dateStr) => {
+                            this.$refs.availableFromInput.value = dateStr;
+                            this.$refs.availableFromInput.dispatchEvent(new Event('input', { bubbles: true }));
+                        },
+                    });
+                    this.$watch('$wire.available_from', (value) => {
+                        if (this.fp) this.fp.setDate(value || null, false);
+                    });
+                },
+                destroy() {
+                    if (this.fp) this.fp.destroy();
+                },
+            }"
+        >
+            <flux:input
+                input:x-ref="availableFromInput"
+                wire:model="available_from"
+                :label="__('When can you start working with us?')"
+                placeholder="Jul 13, 1995"
+            />
         </div>
     </div>
 

@@ -1,8 +1,7 @@
 <?php
 
-use App\Enums\Education\EmploymentType;
+use App\Enums\Education\Availability;
 use App\Enums\Education\KeyStage;
-use App\Enums\Nationality;
 use App\Models\CandidateSkill;
 use App\Models\EducationApplication;
 use App\Models\EducationCandidate;
@@ -10,6 +9,7 @@ use App\Models\Industry;
 use App\Models\Qualification;
 use App\Services\CvParserService;
 use App\Services\Document;
+use Illuminate\Support\Carbon;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Validation\Rule;
@@ -29,38 +29,56 @@ new #[Layout('layouts.auth')] class extends Component
         4 => 'Skills & Work',
     ];
 
+    private const DATE_DISPLAY_FORMAT = 'M j, Y';
+
     public string $token = '';
+
     public ?EducationApplication $application = null;
+
     public int $currentStep = 1;
 
     public mixed $cv = null;
+
     public ?string $parseError = null;
 
     public mixed $photo = null;
 
     // Personal information
     public ?string $title = null;
+
     public string $first_name = '';
+
     public string $middle_name = '';
+
     public string $last_name = '';
+
     public string $previous_surname = '';
+
     public ?string $gender = null;
+
     public ?string $nationality = null;
+
     public ?string $date_of_birth = null;
 
     // Address
     public string $address = '';
+
     public string $city = '';
+
     public string $county = '';
+
     public string $country = '';
+
     public string $postcode = '';
 
     // Contact
     public string $phone = '';
+
     public string $mobile = '';
 
     // Emergency contact
     public string $emergency_contact_name = '';
+
     public string $emergency_contact_number = '';
 
     // Employment
@@ -68,9 +86,13 @@ new #[Layout('layouts.auth')] class extends Component
 
     // Skills & work preferences
     public ?int $qualification_id = null;
-    public ?string $employment_type = null;
+
+    public array $availability = [];
+
     public ?string $available_from = null;
+
     public array $key_stages = [];
+
     public array $skills = [];
 
     public array $cv_parsed_data = [];
@@ -137,21 +159,21 @@ new #[Layout('layouts.auth')] class extends Component
         try {
             $extracted = $service->parse(Storage::disk('local')->path($localPath));
 
-            $this->first_name       = $extracted->firstName ?? '';
-            $this->middle_name      = $extracted->middleName ?? '';
-            $this->last_name        = $extracted->lastName ?? '';
-            $this->date_of_birth    = $extracted->dateOfBirth ?: null;
-            $this->address          = $extracted->address ?? '';
-            $this->city             = $extracted->city ?? '';
-            $this->county           = $extracted->county ?? '';
-            $this->country          = $extracted->country ?? '';
-            $this->postcode         = $extracted->postcode ?? '';
-            $this->phone            = $extracted->phone ?? '';
-            $this->mobile           = $extracted->mobile ?? '';
-            $this->gender           = $extracted->gender ?? null;
-            $this->nationality      = $extracted->nationality ?? null;
+            $this->first_name = $extracted->firstName ?? '';
+            $this->middle_name = $extracted->middleName ?? '';
+            $this->last_name = $extracted->lastName ?? '';
+            $this->date_of_birth = $this->formatDateForDisplay($extracted->dateOfBirth);
+            $this->address = $extracted->address ?? '';
+            $this->city = $extracted->city ?? '';
+            $this->county = $extracted->county ?? '';
+            $this->country = $extracted->country ?? '';
+            $this->postcode = $extracted->postcode ?? '';
+            $this->phone = $extracted->phone ?? '';
+            $this->mobile = $extracted->mobile ?? '';
+            $this->gender = $extracted->gender ?? null;
+            $this->nationality = $extracted->nationality ?? null;
             $this->employment_history = $extracted->employmentHistory ?? '';
-            $this->cv_parsed_data   = (array) $extracted;
+            $this->cv_parsed_data = (array) $extracted;
         } catch (Throwable $e) {
             $this->parseError = 'CV parsing failed. Please fill in your details manually below.';
             report($e);
@@ -165,45 +187,45 @@ new #[Layout('layouts.auth')] class extends Component
     public function nextStep(): void
     {
         $this->validate([
-            'first_name'               => ['required', 'string', 'max:255'],
-            'last_name'                => ['required', 'string', 'max:255'],
-            'date_of_birth'            => ['required', 'date', 'before:today'],
-            'address'                  => ['required', 'string', 'max:500'],
-            'city'                     => ['required', 'string', 'max:255'],
-            'postcode'                 => ['required', 'string', 'max:10'],
-            'title'                    => ['nullable', 'string', 'max:10'],
-            'middle_name'              => ['nullable', 'string', 'max:255'],
-            'previous_surname'         => ['nullable', 'string', 'max:255'],
-            'gender'                   => ['nullable', 'string', 'in:male,female,non_binary,prefer_not_to_say'],
-            'nationality'              => ['nullable', 'string', 'max:255'],
-            'county'                   => ['nullable', 'string', 'max:255'],
-            'country'                  => ['nullable', 'string', 'max:255'],
-            'phone'                    => ['nullable', 'string', 'max:20'],
-            'mobile'                   => ['nullable', 'string', 'max:20'],
-            'emergency_contact_name'   => ['nullable', 'string', 'max:255'],
+            'first_name' => ['required', 'string', 'max:255'],
+            'last_name' => ['required', 'string', 'max:255'],
+            'date_of_birth' => ['required', 'date', 'before:today'],
+            'address' => ['required', 'string', 'max:500'],
+            'city' => ['required', 'string', 'max:255'],
+            'postcode' => ['required', 'string', 'max:10'],
+            'title' => ['nullable', 'string', 'max:10'],
+            'middle_name' => ['nullable', 'string', 'max:255'],
+            'previous_surname' => ['nullable', 'string', 'max:255'],
+            'gender' => ['nullable', 'string', 'in:male,female,non_binary,prefer_not_to_say'],
+            'nationality' => ['nullable', 'string', 'max:255'],
+            'county' => ['nullable', 'string', 'max:255'],
+            'country' => ['nullable', 'string', 'max:255'],
+            'phone' => ['nullable', 'string', 'max:20'],
+            'mobile' => ['nullable', 'string', 'max:20'],
+            'emergency_contact_name' => ['nullable', 'string', 'max:255'],
             'emergency_contact_number' => ['nullable', 'string', 'max:20'],
-            'employment_history'       => ['nullable', 'string'],
+            'employment_history' => ['nullable', 'string'],
         ]);
 
         $this->application->educationCandidate->update([
-            'title'                    => $this->title,
-            'first_name'               => $this->first_name,
-            'middle_name'              => $this->middle_name ?: null,
-            'last_name'                => $this->last_name,
-            'previous_surname'         => $this->previous_surname ?: null,
-            'gender'                   => $this->gender,
-            'nationality'              => $this->nationality,
-            'date_of_birth'            => $this->date_of_birth,
-            'address'                  => $this->address,
-            'city'                     => $this->city,
-            'county'                   => $this->county ?: null,
-            'country'                  => $this->country ?: null,
-            'postcode'                 => $this->postcode,
-            'phone'                    => $this->phone ?: null,
-            'mobile'                   => $this->mobile ?: null,
-            'emergency_contact_name'   => $this->emergency_contact_name ?: null,
+            'title' => $this->title,
+            'first_name' => $this->first_name,
+            'middle_name' => $this->middle_name ?: null,
+            'last_name' => $this->last_name,
+            'previous_surname' => $this->previous_surname ?: null,
+            'gender' => $this->gender,
+            'nationality' => $this->nationality,
+            'date_of_birth' => $this->date_of_birth,
+            'address' => $this->address,
+            'city' => $this->city,
+            'county' => $this->county ?: null,
+            'country' => $this->country ?: null,
+            'postcode' => $this->postcode,
+            'phone' => $this->phone ?: null,
+            'mobile' => $this->mobile ?: null,
+            'emergency_contact_name' => $this->emergency_contact_name ?: null,
             'emergency_contact_number' => $this->emergency_contact_number ?: null,
-            'employment_history'       => $this->employment_history ?: null,
+            'employment_history' => $this->employment_history ?: null,
         ]);
 
         $this->goToStep(3);
@@ -236,12 +258,13 @@ new #[Layout('layouts.auth')] class extends Component
     {
         $this->validate([
             'qualification_id' => ['nullable', 'integer', 'exists:qualifications,id'],
-            'employment_type'  => ['nullable', 'string', Rule::enum(EmploymentType::class)],
-            'available_from'   => ['nullable', 'date'],
-            'key_stages'       => ['nullable', 'array'],
-            'key_stages.*'     => ['string', Rule::enum(KeyStage::class)],
-            'skills'           => ['nullable', 'array'],
-            'skills.*'         => ['integer', 'exists:candidate_skills,id'],
+            'availability' => ['nullable', 'array'],
+            'availability.*' => ['string', Rule::enum(Availability::class)],
+            'available_from' => ['nullable', 'date'],
+            'key_stages' => ['nullable', 'array'],
+            'key_stages.*' => ['string', Rule::enum(KeyStage::class)],
+            'skills' => ['nullable', 'array'],
+            'skills.*' => ['integer', 'exists:candidate_skills,id'],
         ]);
 
         $skillIds = collect($this->skills);
@@ -254,15 +277,15 @@ new #[Layout('layouts.auth')] class extends Component
 
         $candidate->update([
             'qualification_id' => $this->qualification_id,
-            'employment_type'  => $this->employment_type,
-            'available_from'   => $this->available_from,
-            'key_stages'       => $this->key_stages,
+            'availability' => $this->availability,
+            'available_from' => $this->available_from,
+            'key_stages' => $this->key_stages,
         ]);
 
         $candidate->skills()->sync($skillIds->merge($parentIds)->unique()->values());
 
         $this->application->update([
-            'status'       => 'completed',
+            'status' => 'completed',
             'current_step' => 4,
             'completed_at' => now(),
         ]);
@@ -344,46 +367,46 @@ new #[Layout('layouts.auth')] class extends Component
 
     private function hydrateFromCandidate(EducationCandidate $candidate): void
     {
-        $this->title                    = $candidate->title;
-        $this->first_name               = $candidate->first_name ?? '';
-        $this->middle_name              = $candidate->middle_name ?? '';
-        $this->last_name                = $candidate->last_name ?? '';
-        $this->previous_surname         = $candidate->previous_surname ?? '';
-        $this->gender                   = $candidate->gender;
-        $this->nationality              = $candidate->nationality;
-        $this->date_of_birth            = $candidate->date_of_birth?->toDateString();
-        $this->address                  = $candidate->address ?? '';
-        $this->city                     = $candidate->city ?? '';
-        $this->county                   = $candidate->county ?? '';
-        $this->country                  = $candidate->country ?? '';
-        $this->postcode                 = $candidate->postcode ?? '';
-        $this->phone                    = $candidate->phone ?? '';
-        $this->mobile                   = $candidate->mobile ?? '';
-        $this->emergency_contact_name   = $candidate->emergency_contact_name ?? '';
+        $this->title = $candidate->title;
+        $this->first_name = $candidate->first_name ?? '';
+        $this->middle_name = $candidate->middle_name ?? '';
+        $this->last_name = $candidate->last_name ?? '';
+        $this->previous_surname = $candidate->previous_surname ?? '';
+        $this->gender = $candidate->gender;
+        $this->nationality = $candidate->nationality;
+        $this->date_of_birth = $candidate->date_of_birth?->format(self::DATE_DISPLAY_FORMAT);
+        $this->address = $candidate->address ?? '';
+        $this->city = $candidate->city ?? '';
+        $this->county = $candidate->county ?? '';
+        $this->country = $candidate->country ?? '';
+        $this->postcode = $candidate->postcode ?? '';
+        $this->phone = $candidate->phone ?? '';
+        $this->mobile = $candidate->mobile ?? '';
+        $this->emergency_contact_name = $candidate->emergency_contact_name ?? '';
         $this->emergency_contact_number = $candidate->emergency_contact_number ?? '';
-        $this->employment_history       = $candidate->employment_history ?? '';
+        $this->employment_history = $candidate->employment_history ?? '';
 
         $this->qualification_id = $candidate->qualification_id;
-        $this->employment_type  = $candidate->employment_type;
-        $this->available_from   = $candidate->available_from?->toDateString();
-        $this->key_stages       = $candidate->key_stages ?? [];
-        $this->skills           = $candidate->skills->pluck('id')->all();
+        $this->availability = $candidate->availability ?? [];
+        $this->available_from = $candidate->available_from?->format(self::DATE_DISPLAY_FORMAT);
+        $this->key_stages = $candidate->key_stages ?? [];
+        $this->skills = $candidate->skills->pluck('id')->all();
     }
 
     private function hydrateFromParsedData(array $data, bool $onlyFillBlanks = false): void
     {
         $map = [
-            'first_name'         => $data['firstName'] ?? '',
-            'middle_name'        => $data['middleName'] ?? '',
-            'last_name'          => $data['lastName'] ?? '',
-            'date_of_birth'      => $data['dateOfBirth'] ?? null,
-            'address'            => $data['address'] ?? '',
-            'city'               => $data['city'] ?? '',
-            'county'             => $data['county'] ?? '',
-            'country'            => $data['country'] ?? '',
-            'postcode'           => $data['postcode'] ?? '',
-            'phone'              => $data['phone'] ?? '',
-            'mobile'             => $data['mobile'] ?? '',
+            'first_name' => $data['firstName'] ?? '',
+            'middle_name' => $data['middleName'] ?? '',
+            'last_name' => $data['lastName'] ?? '',
+            'date_of_birth' => $this->formatDateForDisplay($data['dateOfBirth'] ?? null),
+            'address' => $data['address'] ?? '',
+            'city' => $data['city'] ?? '',
+            'county' => $data['county'] ?? '',
+            'country' => $data['country'] ?? '',
+            'postcode' => $data['postcode'] ?? '',
+            'phone' => $data['phone'] ?? '',
+            'mobile' => $data['mobile'] ?? '',
             'employment_history' => $data['employmentHistory'] ?? '',
         ];
 
@@ -397,5 +420,17 @@ new #[Layout('layouts.auth')] class extends Component
 
         $this->cv_parsed_data = $data;
     }
-};
 
+    private function formatDateForDisplay(?string $date): ?string
+    {
+        if (! $date) {
+            return null;
+        }
+
+        try {
+            return Carbon::parse($date)->format(self::DATE_DISPLAY_FORMAT);
+        } catch (Throwable) {
+            return null;
+        }
+    }
+};

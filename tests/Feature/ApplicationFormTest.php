@@ -134,7 +134,7 @@ test('parseCv populates fields and advances to step 2', function () {
         ->assertSet('first_name', 'Jane')
         ->assertSet('last_name', 'Doe')
         ->assertSet('city', 'London')
-        ->assertSet('date_of_birth', '1990-05-15')
+        ->assertSet('date_of_birth', 'May 15, 1990')
         ->assertSet('employment_history', 'Teacher at Oakwood Primary 2020–Present');
 
     $cvTempPath = $application->fresh()->cv_temp_path;
@@ -226,7 +226,7 @@ test('mount hydrates step 2 fields already saved on the candidate, preferring th
         ->assertSet('currentStep', 2)
         ->assertSet('first_name', 'Priya')
         ->assertSet('last_name', 'Shah')
-        ->assertSet('date_of_birth', '1985-03-02')
+        ->assertSet('date_of_birth', 'Mar 2, 1985')
         ->assertSet('city', 'Leeds')
         ->assertSet('mobile', '07700900123');
 });
@@ -320,7 +320,7 @@ test('submitApplication persists skills, qualification, and work preferences and
     Livewire::test('application.application-form', ['token' => $application->token])
         ->set('currentStep', 4)
         ->set('qualification_id', $qualification->id)
-        ->set('employment_type', 'long_term')
+        ->set('availability', ['long_term', 'part_time'])
         ->set('available_from', now()->addWeek()->toDateString())
         ->set('key_stages', ['keystage_1', 'keystage_2'])
         ->set('skills', [$childSkill->id])
@@ -329,7 +329,7 @@ test('submitApplication persists skills, qualification, and work preferences and
 
     $candidate->refresh();
     expect($candidate->qualification_id)->toBe($qualification->id);
-    expect($candidate->employment_type)->toBe('long_term');
+    expect($candidate->availability)->toBe(['long_term', 'part_time']);
     expect($candidate->available_from->toDateString())->toBe(now()->addWeek()->toDateString());
     expect($candidate->key_stages)->toBe(['keystage_1', 'keystage_2']);
     expect($candidate->skills->pluck('id')->sort()->values()->all())->toBe([$parentSkill->id, $childSkill->id]);
@@ -338,15 +338,15 @@ test('submitApplication persists skills, qualification, and work preferences and
     expect($application->fresh()->completed_at)->not->toBeNull();
 });
 
-test('submitApplication validates employment_type and key_stages values', function () {
+test('submitApplication validates availability and key_stages values', function () {
     $application = makePendingApplication();
 
     Livewire::test('application.application-form', ['token' => $application->token])
         ->set('currentStep', 4)
-        ->set('employment_type', 'not-a-real-option')
+        ->set('availability', ['not-a-real-option'])
         ->set('key_stages', ['not-a-real-key-stage'])
         ->call('submitApplication')
-        ->assertHasErrors(['employment_type', 'key_stages.0']);
+        ->assertHasErrors(['availability.0', 'key_stages.0']);
 });
 
 test('mount resumes at the persisted step and hydrates saved candidate data', function () {
@@ -393,7 +393,7 @@ test('mount hydrates qualification, work preferences, and skills already saved o
 
     $candidate->update([
         'qualification_id' => $qualification->id,
-        'employment_type' => 'long_term',
+        'availability' => ['long_term', 'part_time'],
         'available_from' => now()->addWeek()->toDateString(),
         'key_stages' => ['keystage_1', 'keystage_2'],
     ]);
@@ -409,8 +409,8 @@ test('mount hydrates qualification, work preferences, and skills already saved o
     Livewire::test('application.application-form', ['token' => $application->token])
         ->assertSet('currentStep', 4)
         ->assertSet('qualification_id', $qualification->id)
-        ->assertSet('employment_type', 'long_term')
-        ->assertSet('available_from', now()->addWeek()->toDateString())
+        ->assertSet('availability', ['long_term', 'part_time'])
+        ->assertSet('available_from', now()->addWeek()->format('M j, Y'))
         ->assertSet('key_stages', ['keystage_1', 'keystage_2'])
         ->assertSet('skills', fn (array $skills) => collect($skills)->sort()->values()->all() === [$parentSkill->id, $childSkill->id]);
 });
