@@ -59,7 +59,8 @@
                     fp: null,
                     init() {
                         this.fp = flatpickr(this.$refs.dobInput, {
-                            dateFormat: 'Y-m-d',
+                            dateFormat: 'M j, Y',
+                            disableMobile: true,
                             maxDate: 'today',
                             allowInput: true,
                             defaultDate: this.$refs.dobInput.value || null,
@@ -81,7 +82,7 @@
                     input:x-ref="dobInput"
                     wire:model="date_of_birth"
                     :label="__('Date of Birth')"
-                    placeholder="YYYY-MM-DD"
+                    placeholder="Jul 13, 1995"
                     required
                 />
             </div>
