@@ -117,6 +117,29 @@ test('new references default to pending status and can be moved through the work
     expect($reference->last_contacted->toDateString())->toBe('2026-06-01');
 });
 
+test('references default to contact_now being enabled and can be switched off via the repeater', function () {
+    $candidate = EducationCandidate::factory()->create(['company_id' => null]);
+
+    $reference = $candidate->references()->create([
+        'type' => 'character',
+        'first_name' => 'Existing',
+        'last_name' => 'Referee',
+        'worked_from' => '2019-01-01',
+        'consent_to_contact' => true,
+    ])->fresh();
+
+    expect($reference->contact_now)->toBeTrue();
+
+    Livewire::test(EditEducationCandidate::class, ['record' => $candidate->getRouteKey()])
+        ->set('data.phone', '07700900000')
+        ->set('data.mobile', '07700900001')
+        ->set("data.references.record-{$reference->id}.contact_now", false)
+        ->call('save')
+        ->assertHasNoFormErrors();
+
+    expect($reference->refresh()->contact_now)->toBeFalse();
+});
+
 test('employment history can be viewed and saved via the repeater on the candidate edit form', function () {
     $candidate = EducationCandidate::factory()->create(['company_id' => null]);
 
@@ -131,4 +154,25 @@ test('employment history can be viewed and saved via the repeater on the candida
         ->assertSuccessful();
 
     expect($candidate->employmentHistories()->count())->toBe(1);
+});
+
+test('collapsed employment history item label shows the company and year range', function () {
+    $candidate = EducationCandidate::factory()->create(['company_id' => null]);
+
+    $candidate->employmentHistories()->create([
+        'company_name' => 'Oakwood Primary',
+        'job_title' => 'Class Teacher',
+        'worked_from' => '2020-09-01',
+        'worked_to' => '2022-07-01',
+    ]);
+    $candidate->employmentHistories()->create([
+        'company_name' => 'Elm Secondary',
+        'job_title' => 'Head of Year',
+        'worked_from' => '2018-09-01',
+        'worked_to' => null,
+    ]);
+
+    Livewire::test(EditEducationCandidate::class, ['record' => $candidate->getRouteKey()])
+        ->assertSee('Oakwood Primary (2020 - 2022)')
+        ->assertSee('Elm Secondary (2018 - Present)');
 });

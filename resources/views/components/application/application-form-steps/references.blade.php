@@ -165,7 +165,14 @@
 
                 <flux:checkbox
                     wire:model="references.{{ $index }}.consent_to_contact"
-                    :label="__('The candidate consents to us contacting this referee')"
+                    :label="__('I hereby authorise Applebough Education to contact the referees named in my application and to disclose relevant information about my employment, experience, and suitability for work in education for the purpose of obtaining references and completing safeguarding and compliance checks.')"
+                    :description="__('I acknowledge that this consent is required to progress my application and understand that my information will be processed securely and in accordance with applicable data protection laws. (*)')"
+                />
+
+                <flux:checkbox
+                    wire:model="references.{{ $index }}.contact_now"
+                    :label="__('OK to contact this referee now')"
+                    :description="__('Leave unchecked if you haven\'t yet told this referee you\'re applying — we\'ll hold off contacting them until you switch this on.')"
                 />
 
                 <flux:button type="button" variant="primary" wire:click="saveReference({{ $index }})" class="self-start">

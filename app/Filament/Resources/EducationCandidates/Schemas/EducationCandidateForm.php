@@ -30,6 +30,7 @@ use Filament\Schemas\Components\Utilities\Get;
 use Filament\Schemas\Components\Utilities\Set;
 use Filament\Schemas\Schema;
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Http;
 
@@ -356,7 +357,7 @@ class EducationCandidateForm
                             ->schema([
                                 Repeater::make('employmentHistories')
                                     ->relationship()
-                                    ->label('')
+                                    ->hiddenLabel()
                                     ->schema([
                                         TextInput::make('job_title')
                                             ->required()
@@ -371,9 +372,23 @@ class EducationCandidateForm
                                             ->native(false),
                                     ])
                                     ->columns(2)
-                                    ->itemLabel(fn (array $state): ?string => trim(($state['job_title'] ?? '').' at '.($state['company_name'] ?? ''), ' at ') ?: 'Job')
+                                    ->itemLabel(function (array $state): ?string {
+                                        $company = $state['company_name'] ?? '';
+
+                                        $from = $state['worked_from'] ?? null;
+                                        $to = $state['worked_to'] ?? null;
+
+                                        $years = match (true) {
+                                            filled($from) && filled($to) => Carbon::parse($from)->format('Y').' - '.Carbon::parse($to)->format('Y'),
+                                            filled($from) => Carbon::parse($from)->format('Y').' - Present',
+                                            default => null,
+                                        };
+
+                                        return trim($company.($years ? " ({$years})" : '')) ?: 'Job';
+                                    })
                                     ->collapsible()
                                     ->collapsed()
+                                    ->extraAttributes(['class' => 'employment-timeline'])
                                     ->columnSpanFull(),
                             ]),
 
@@ -381,7 +396,7 @@ class EducationCandidateForm
                             ->schema([
                                 Repeater::make('references')
                                     ->relationship()
-                                    ->label('')
+                                    ->hiddenLabel()
                                     ->schema([
                                         Select::make('type')
                                             ->label('Reference Type')
@@ -427,6 +442,11 @@ class EducationCandidateForm
                                             ->maxLength(255),
                                         Checkbox::make('consent_to_contact')
                                             ->label('Candidate consents to us contacting this referee')
+                                            ->columnSpanFull(),
+                                        Checkbox::make('contact_now')
+                                            ->label('Contact this referee now')
+                                            ->helperText('Switch off if the candidate isn\'t ready for this referee to be contacted yet.')
+                                            ->default(true)
                                             ->columnSpanFull(),
                                         Select::make('status')
                                             ->options(

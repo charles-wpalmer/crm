@@ -88,6 +88,84 @@ class AdminPanelProvider extends PanelProvider
                         };
                     </script>
                 ")
+            )
+            ->renderHook(
+                PanelsRenderHook::HEAD_END,
+                fn () => new HtmlString("
+                    <style>
+                        .employment-timeline .fi-fo-repeater-items {
+                            position: relative;
+                        }
+
+                        .employment-timeline .fi-fo-repeater-items::before {
+                            content: '';
+                            position: absolute;
+                            top: 0;
+                            bottom: 0;
+                            left: 50%;
+                            width: 2px;
+                            background-color: var(--gray-200);
+                            transform: translateX(-50%);
+                        }
+
+                        .dark .employment-timeline .fi-fo-repeater-items::before {
+                            background-color: var(--gray-700);
+                        }
+
+                        .employment-timeline .fi-fo-repeater-item {
+                            position: relative;
+                            width: calc(50% - 2.5rem);
+                        }
+
+                        .employment-timeline .fi-fo-repeater-item:nth-child(odd) {
+                            margin-right: auto;
+                        }
+
+                        .employment-timeline .fi-fo-repeater-item:nth-child(even) {
+                            margin-left: auto;
+                        }
+
+                        .employment-timeline .fi-fo-repeater-item::before {
+                            content: '';
+                            position: absolute;
+                            top: 1.25rem;
+                            width: 0.75rem;
+                            height: 0.75rem;
+                            border-radius: 9999px;
+                            background-color: var(--primary-500);
+                            box-shadow: 0 0 0 3px var(--gray-50);
+                        }
+
+                        .dark .employment-timeline .fi-fo-repeater-item::before {
+                            box-shadow: 0 0 0 3px var(--gray-950);
+                        }
+
+                        .employment-timeline .fi-fo-repeater-item:nth-child(odd)::before {
+                            right: -2.875rem;
+                        }
+
+                        .employment-timeline .fi-fo-repeater-item:nth-child(even)::before {
+                            left: -2.875rem;
+                        }
+
+                        @media (max-width: 768px) {
+                            .employment-timeline .fi-fo-repeater-items::before {
+                                left: 0.375rem;
+                            }
+
+                            .employment-timeline .fi-fo-repeater-item {
+                                width: calc(100% - 2rem) !important;
+                                margin-left: 2rem !important;
+                                margin-right: 0 !important;
+                            }
+
+                            .employment-timeline .fi-fo-repeater-item::before {
+                                left: -1.625rem !important;
+                                right: auto !important;
+                            }
+                        }
+                    </style>
+                ")
             );
     }
 }

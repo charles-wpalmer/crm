@@ -8,6 +8,7 @@ use App\Models\EducationApplication;
 use App\Models\EducationCandidate;
 use App\Models\Industry;
 use App\Models\Qualification;
+use App\Services\ApplicationAccessSession;
 use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\Storage;
 use Livewire\Livewire;
@@ -21,10 +22,14 @@ function makePendingApplication(): EducationApplication
 {
     $candidate = EducationCandidate::factory()->create();
 
-    return EducationApplication::factory()->create([
+    $application = EducationApplication::factory()->create([
         'education_candidate_id' => $candidate->id,
         'status' => 'pending',
     ]);
+
+    ApplicationAccessSession::markVerified($application->token);
+
+    return $application;
 }
 
 test('form renders step 1 for valid pending application', function () {
@@ -75,6 +80,8 @@ test('form displays the existing CV filename when viewing step 1 after it has be
         'cv_temp_path' => 'company/1/candidate/my-resume.pdf',
     ]);
 
+    ApplicationAccessSession::markVerified($application->token);
+
     Livewire::test('application.application-form', ['token' => $application->token])
         ->call('viewStep', 1)
         ->assertSee('CV uploaded')
@@ -89,6 +96,8 @@ test('form shows the analyse button once a new CV is staged to replace an existi
         'current_step' => 2,
         'cv_temp_path' => 'company/1/candidate/my-resume.pdf',
     ]);
+
+    ApplicationAccessSession::markVerified($application->token);
 
     $file = UploadedFile::fake()->create('new-cv.pdf', 200, 'application/pdf');
 
@@ -143,7 +152,9 @@ test('parseCv populates fields and advances to step 2', function () {
         ->assertSet('first_name', 'Jane')
         ->assertSet('last_name', 'Doe')
         ->assertSet('city', 'London')
-        ->assertSet('date_of_birth', 'May 15, 1990');
+        ->assertSet('date_of_birth', 'May 15, 1990')
+        ->assertSet('employmentHistories.0.company_name', 'Oakwood Primary')
+        ->assertSet('employmentHistories.0.job_title', 'Teacher');
 
     $cvTempPath = $application->fresh()->cv_temp_path;
     expect($cvTempPath)->not->toBeNull();
@@ -227,6 +238,8 @@ test('mount hydrates step 2 fields already saved on the candidate, preferring th
             'mobile' => '07700900123',
         ],
     ]);
+
+    ApplicationAccessSession::markVerified($application->token);
 
     Livewire::test('application.application-form', ['token' => $application->token])
         ->assertSet('currentStep', 2)
@@ -392,6 +405,8 @@ test('mount seeds employment history from cv parsed data when none is saved yet'
         ],
     ]);
 
+    ApplicationAccessSession::markVerified($application->token);
+
     Livewire::test('application.application-form', ['token' => $application->token])
         ->assertCount('employmentHistories', 2)
         ->assertSet('employmentHistories.0.company_name', 'Oakwood Primary')
@@ -548,8 +563,49 @@ test('saveReference validates and persists a single reference, then collapses it
     $reference = $candidate->references()->first();
     expect($reference->first_name)->toBe('Jane');
     expect($reference->worked_from->toDateString())->toBe(now()->subYears(2)->toDateString());
+    expect($reference->contact_now)->toBeFalse();
     $component->assertSet('references.0.collapsed', true);
     $component->assertSet('references.0.id', $reference->id);
+});
+
+test('a new reference defaults to contact_now being off, requiring the candidate to opt in', function () {
+    $application = makePendingApplication();
+
+    Livewire::test('application.application-form', ['token' => $application->token])
+        ->set('currentStep', 6)
+        ->assertSet('references.0.contact_now', false)
+        ->call('addReference')
+        ->assertSet('references.1.contact_now', false);
+});
+
+test('saveReference persists contact_now as true when the candidate explicitly opts in to contact', function () {
+    $application = makePendingApplication();
+    $candidate = $application->educationCandidate;
+
+    Livewire::test('application.application-form', ['token' => $application->token])
+        ->set('currentStep', 6)
+        ->set('references.0', [
+            'type' => 'professional',
+            'title' => 'Mr',
+            'first_name' => 'Jane',
+            'last_name' => 'Smith',
+            'job_title' => 'Head Teacher',
+            'worked_from' => now()->subYears(2)->format('M j, Y'),
+            'worked_to' => now()->format('M j, Y'),
+            'email' => 'jane@example.com',
+            'mobile' => '07700900000',
+            'address' => '1 School Lane',
+            'city' => 'London',
+            'county' => 'Greater London',
+            'country' => 'United Kingdom',
+            'postcode' => 'SW1A 1AA',
+            'consent_to_contact' => true,
+            'contact_now' => true,
+        ])
+        ->call('saveReference', 0)
+        ->assertHasNoErrors();
+
+    expect($candidate->references()->first()->contact_now)->toBeTrue();
 });
 
 test('saveReference updates an already-saved reference on a second save without a database error', function () {
@@ -777,6 +833,33 @@ test('references step displays how much of the last 3 years is currently covered
         ->assertSee('gap');
 });
 
+test('references step reports real covered duration when the earliest reference starts after the 3 year cutoff', function () {
+    $application = makePendingApplication();
+
+    Livewire::test('application.application-form', ['token' => $application->token])
+        ->set('currentStep', 6)
+        ->set('references.0', [
+            'type' => 'professional',
+            'title' => 'Mr',
+            'first_name' => 'Jane',
+            'last_name' => 'Smith',
+            'job_title' => 'Head Teacher',
+            'worked_from' => now()->subYears(2)->subDays(2)->format('M j, Y'),
+            'worked_to' => null,
+            'email' => 'jane@example.com',
+            'mobile' => '07700900000',
+            'address' => '1 School Lane',
+            'city' => 'London',
+            'county' => 'Greater London',
+            'country' => 'United Kingdom',
+            'postcode' => 'SW1A 1AA',
+            'consent_to_contact' => true,
+        ])
+        ->assertSee('2 years 2 days')
+        ->assertDontSee('0 years, 0 months')
+        ->assertSee('gap');
+});
+
 test('mount resumes at the persisted step and hydrates saved candidate data', function () {
     $candidate = EducationCandidate::factory()->create([
         'first_name' => 'Priya',
@@ -790,12 +873,39 @@ test('mount resumes at the persisted step and hydrates saved candidate data', fu
         'current_step' => 3,
     ]);
 
+    ApplicationAccessSession::markVerified($application->token);
+
     Livewire::test('application.application-form', ['token' => $application->token])
         ->assertSet('currentStep', 3)
         ->assertSet('first_name', 'Priya')
         ->assertSet('last_name', 'Shah')
         ->assertSet('city', 'Manchester')
         ->assertSee('Add Your Photo');
+});
+
+test('mount hydrates a saved reference\'s contact_now value', function () {
+    $candidate = EducationCandidate::factory()->create();
+
+    $reference = $candidate->references()->create([
+        'type' => 'character',
+        'first_name' => 'Existing',
+        'last_name' => 'Referee',
+        'worked_from' => '2019-01-01',
+        'consent_to_contact' => true,
+        'contact_now' => false,
+    ]);
+
+    $application = EducationApplication::factory()->create([
+        'education_candidate_id' => $candidate->id,
+        'status' => 'pending',
+        'current_step' => 6,
+    ]);
+
+    ApplicationAccessSession::markVerified($application->token);
+
+    Livewire::test('application.application-form', ['token' => $application->token])
+        ->assertSet('references.0.id', $reference->id)
+        ->assertSet('references.0.contact_now', false);
 });
 
 test('mount hydrates qualification, work preferences, and skills already saved on the candidate', function () {
@@ -834,6 +944,8 @@ test('mount hydrates qualification, work preferences, and skills already saved o
         'current_step' => 4,
     ]);
 
+    ApplicationAccessSession::markVerified($application->token);
+
     Livewire::test('application.application-form', ['token' => $application->token])
         ->assertSet('currentStep', 4)
         ->assertSet('qualification_id', $qualification->id)
@@ -850,6 +962,8 @@ test('progress bar displays the current section name and percentage', function (
         'current_step' => 3,
     ]);
 
+    ApplicationAccessSession::markVerified($application->token);
+
     Livewire::test('application.application-form', ['token' => $application->token])
         ->assertSee('Photo')
         ->assertSee('Step 3 of 6')
@@ -862,6 +976,8 @@ test('viewStep allows navigating back to an already reached step', function () {
         'status' => 'pending',
         'current_step' => 4,
     ]);
+
+    ApplicationAccessSession::markVerified($application->token);
 
     Livewire::test('application.application-form', ['token' => $application->token])
         ->assertSet('currentStep', 4)
@@ -878,6 +994,8 @@ test('progress bar disables the forward arrow until navigating back to a previou
         'status' => 'pending',
         'current_step' => 4,
     ]);
+
+    ApplicationAccessSession::markVerified($application->token);
 
     Livewire::test('application.application-form', ['token' => $application->token])
         ->assertSeeHtml('wire:click="viewStep(5)" disabled="disabled"')
@@ -900,6 +1018,8 @@ test('viewStep ignores attempts to jump ahead of the furthest reached step', fun
         'status' => 'pending',
         'current_step' => 2,
     ]);
+
+    ApplicationAccessSession::markVerified($application->token);
 
     Livewire::test('application.application-form', ['token' => $application->token])
         ->assertSet('currentStep', 2)
@@ -940,4 +1060,37 @@ test('navigating back then forward again does not regress the persisted furthest
 
     expect($application->fresh()->current_step)->toBe(4);
     expect($application->fresh()->educationCandidate->last_name)->toBe('Smith');
+});
+
+test('mount redirects to the verify page for a session that has not verified this application', function () {
+    $candidate = EducationCandidate::factory()->create();
+
+    $application = EducationApplication::factory()->create([
+        'education_candidate_id' => $candidate->id,
+        'status' => 'pending',
+    ]);
+
+    Livewire::test('application.application-form', ['token' => $application->token])
+        ->assertRedirect(route('application.verify', ['token' => $application->token]));
+});
+
+test('mount redirects to the verify page even when the application has been verified before, if this session has not verified it', function () {
+    $candidate = EducationCandidate::factory()->create();
+
+    $application = EducationApplication::factory()->create([
+        'education_candidate_id' => $candidate->id,
+        'status' => 'pending',
+        'email_verified' => true,
+    ]);
+
+    Livewire::test('application.application-form', ['token' => $application->token])
+        ->assertRedirect(route('application.verify', ['token' => $application->token]));
+});
+
+test('mount does not redirect once this session has verified the application', function () {
+    $application = makePendingApplication();
+
+    Livewire::test('application.application-form', ['token' => $application->token])
+        ->assertSet('currentStep', 1)
+        ->assertSee('Upload Your CV');
 });
