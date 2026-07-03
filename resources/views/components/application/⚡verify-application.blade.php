@@ -1,10 +1,11 @@
 <?php
 
 use App\Models\EducationApplication;
+use App\Services\ApplicationAccessSession;
 use Livewire\Attributes\Layout;
 use Livewire\Component;
 
-new #[Layout('layouts.app')] class extends Component
+new #[Layout('layouts.application')] class extends Component
 {
     public string $token = '';
     public string $email = '';
@@ -29,7 +30,7 @@ new #[Layout('layouts.app')] class extends Component
             abort(403, 'This application has already been completed.');
         }
 
-        if ($this->application->email_verified) {
+        if (ApplicationAccessSession::hasVerified($token)) {
             $this->redirect(route('application.form', ['token' => $token]));
         }
     }
@@ -48,13 +49,15 @@ new #[Layout('layouts.app')] class extends Component
         $this->application->email_verified = true;
         $this->application->save();
 
+        ApplicationAccessSession::markVerified($this->token);
+
         $this->redirect(route('application.form', ['token' => $this->token]));
     }
 };
 
 ?>
 
-<div class="flex flex-col gap-6">
+<div class="mx-auto flex w-full max-w-sm flex-col gap-6">
     <x-auth-header
         :title="__('Verify Your Identity')"
         :description="__('Please enter the email address you were contacted on to access your application.')"

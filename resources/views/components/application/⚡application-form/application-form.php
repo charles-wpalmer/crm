@@ -8,6 +8,7 @@ use App\Models\EducationApplication;
 use App\Models\EducationCandidate;
 use App\Models\Industry;
 use App\Models\Qualification;
+use App\Services\ApplicationAccessSession;
 use App\Services\CvParserService;
 use App\Services\Document;
 use Illuminate\Support\Carbon;
@@ -123,8 +124,10 @@ new #[Layout('layouts.application')] class extends Component
             abort(403, 'This application link has expired.');
         }
 
-        if (! $this->application->email_verified) {
+        if (! ApplicationAccessSession::hasVerified($token)) {
             $this->redirect(route('application.verify', ['token' => $token]));
+
+            return;
         }
 
         $this->currentStep = $this->application->current_step ?: 1;
@@ -193,6 +196,14 @@ new #[Layout('layouts.application')] class extends Component
             $this->gender = $extracted->gender ?? null;
             $this->nationality = $extracted->nationality ?? null;
             $this->cv_parsed_data = (array) $extracted;
+
+            if ($this->employmentHistoriesAreUntouched()) {
+                $seededEmploymentHistories = $this->seedEmploymentHistoriesFromCvData($this->cv_parsed_data);
+
+                if (! empty($seededEmploymentHistories)) {
+                    $this->employmentHistories = $seededEmploymentHistories;
+                }
+            }
         } catch (Throwable $e) {
             $this->parseError = 'CV parsing failed. Please fill in your details manually below.';
             report($e);
@@ -388,6 +399,20 @@ new #[Layout('layouts.application')] class extends Component
         $this->employmentHistories[$index]['id'] = $record->id;
     }
 
+    private function employmentHistoriesAreUntouched(): bool
+    {
+        if (count($this->employmentHistories) !== 1) {
+            return false;
+        }
+
+        $entry = $this->employmentHistories[0];
+
+        return blank($entry['company_name'] ?? null)
+            && blank($entry['job_title'] ?? null)
+            && blank($entry['worked_from'] ?? null)
+            && blank($entry['worked_to'] ?? null);
+    }
+
     private function blankEmploymentHistory(): array
     {
         return [
@@ -501,6 +526,7 @@ new #[Layout('layouts.application')] class extends Component
             "references.{$index}.country" => ['nullable', 'string', 'max:255'],
             "references.{$index}.postcode" => ['nullable', 'string', 'max:10'],
             "references.{$index}.consent_to_contact" => ['accepted'],
+            "references.{$index}.contact_now" => ['boolean'],
         ];
     }
 
@@ -524,6 +550,7 @@ new #[Layout('layouts.application')] class extends Component
             'country' => data_get($reference, 'country') ?: null,
             'postcode' => data_get($reference, 'postcode') ?: null,
             'consent_to_contact' => (bool) $reference['consent_to_contact'],
+            'contact_now' => (bool) ($reference['contact_now'] ?? false),
         ];
 
         $candidate = $this->application->educationCandidate;
@@ -576,24 +603,23 @@ new #[Layout('layouts.application')] class extends Component
     public function referenceCoverage(): array
     {
         $cutoff = now()->subYears(self::REFERENCE_HISTORY_YEARS)->startOfDay();
+        $today = today();
 
         $periods = collect($this->references)
             ->filter(fn (array $reference) => ! empty($reference['worked_from']))
             ->map(fn (array $reference) => [
                 'from' => Carbon::parse($reference['worked_from'])->startOfDay(),
-                'to' => $reference['worked_to'] ? Carbon::parse($reference['worked_to'])->startOfDay() : today(),
+                'to' => $reference['worked_to'] ? Carbon::parse($reference['worked_to'])->startOfDay() : $today,
             ])
             ->sortBy('from')
             ->values();
 
+        $coveredFrom = null;
         $coveredUntil = null;
 
         foreach ($periods as $period) {
             if ($coveredUntil === null) {
-                if ($period['from']->gt($cutoff)) {
-                    break;
-                }
-
+                $coveredFrom = $period['from'];
                 $coveredUntil = $period['to'];
 
                 continue;
@@ -608,16 +634,24 @@ new #[Layout('layouts.application')] class extends Component
             }
         }
 
-        $isComplete = $coveredUntil !== null && $coveredUntil->gte(today());
+        $isComplete = $coveredFrom !== null
+            && $coveredFrom->lte($cutoff)
+            && $coveredUntil->gte($today);
 
         if ($coveredUntil === null) {
             $summary = 'Your references currently account for 0 years, 0 months of the last '.self::REFERENCE_HISTORY_YEARS.' years.';
         } elseif ($isComplete) {
             $summary = 'Your references fully account for the last '.self::REFERENCE_HISTORY_YEARS.' years.';
         } else {
-            $coveredLabel = $cutoff->diffForHumans($coveredUntil, syntax: Carbon::DIFF_ABSOLUTE, parts: 2);
-            $gapFrom = $coveredUntil->copy()->addDay()->format(self::DATE_DISPLAY_FORMAT);
-            $summary = 'Your references currently account for '.$coveredLabel.' of the last '.self::REFERENCE_HISTORY_YEARS.' years. There is a gap starting '.$gapFrom.'.';
+            $effectiveFrom = $coveredFrom->gt($cutoff) ? $coveredFrom : $cutoff;
+            $effectiveTo = $coveredUntil->lt($today) ? $coveredUntil : $today;
+            $coveredLabel = $effectiveFrom->diffForHumans($effectiveTo, syntax: Carbon::DIFF_ABSOLUTE, parts: 2);
+
+            $gapDescription = $coveredFrom->gt($cutoff)
+                ? 'There is a gap before '.$coveredFrom->copy()->subDay()->format(self::DATE_DISPLAY_FORMAT).'.'
+                : 'There is a gap starting '.$coveredUntil->copy()->addDay()->format(self::DATE_DISPLAY_FORMAT).'.';
+
+            $summary = 'Your references currently account for '.$coveredLabel.' of the last '.self::REFERENCE_HISTORY_YEARS.' years. '.$gapDescription;
         }
 
         return [
@@ -646,6 +680,7 @@ new #[Layout('layouts.application')] class extends Component
             'country' => '',
             'postcode' => '',
             'consent_to_contact' => false,
+            'contact_now' => false,
             'collapsed' => false,
         ];
     }
@@ -776,6 +811,7 @@ new #[Layout('layouts.application')] class extends Component
             'country' => $reference->country,
             'postcode' => $reference->postcode,
             'consent_to_contact' => $reference->consent_to_contact,
+            'contact_now' => $reference->contact_now,
             'collapsed' => true,
         ])->all();
 

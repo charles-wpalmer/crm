@@ -18,6 +18,7 @@ class CandidateReference extends Model
         'worked_to' => 'date',
         'last_contacted' => 'date',
         'consent_to_contact' => 'boolean',
+        'contact_now' => 'boolean',
     ];
 
     public function candidate(): MorphTo
