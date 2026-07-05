@@ -27,10 +27,11 @@ new #[Layout('layouts.application')] class extends Component
     private const STEP_LABELS = [
         1 => 'Upload CV',
         2 => 'Your Details',
-        3 => 'Photo',
-        4 => 'Skills & Work',
-        5 => 'Employment History',
-        6 => 'References',
+        3 => 'Medical Information',
+        4 => 'Photo',
+        5 => 'Skills & Work',
+        6 => 'Employment History',
+        7 => 'References',
     ];
 
     private const REFERENCE_HISTORY_YEARS = 3;
@@ -82,7 +83,13 @@ new #[Layout('layouts.application')] class extends Component
 
     public string $mobile = '';
 
-    // Emergency contact
+    // Medical information
+    public ?string $has_health_condition_or_disability = null;
+
+    public string $health_condition_details = '';
+
+    public string $reasonable_accommodations = '';
+
     public string $emergency_contact_name = '';
 
     public string $emergency_contact_number = '';
@@ -232,8 +239,6 @@ new #[Layout('layouts.application')] class extends Component
             'country' => ['nullable', 'string', 'max:255'],
             'phone' => ['nullable', 'string', 'max:20'],
             'mobile' => ['nullable', 'string', 'max:20'],
-            'emergency_contact_name' => ['nullable', 'string', 'max:255'],
-            'emergency_contact_number' => ['nullable', 'string', 'max:20'],
         ]);
 
         $this->application->educationCandidate->update([
@@ -252,11 +257,32 @@ new #[Layout('layouts.application')] class extends Component
             'postcode' => $this->postcode,
             'phone' => $this->phone ?: null,
             'mobile' => $this->mobile ?: null,
+        ]);
+
+        $this->goToStep(3);
+    }
+
+    public function saveMedicalInformation(): void
+    {
+        $this->validate([
+            'has_health_condition_or_disability' => ['required', 'in:yes,no'],
+            'health_condition_details' => ['required_if:has_health_condition_or_disability,yes', 'nullable', 'string', 'max:2000'],
+            'reasonable_accommodations' => ['nullable', 'string', 'max:2000'],
+            'emergency_contact_name' => ['nullable', 'string', 'max:255'],
+            'emergency_contact_number' => ['nullable', 'string', 'max:20'],
+        ]);
+
+        $this->application->educationCandidate->update([
+            'has_health_condition_or_disability' => $this->has_health_condition_or_disability,
+            'health_condition_details' => $this->has_health_condition_or_disability === 'yes'
+                ? ($this->health_condition_details ?: null)
+                : null,
+            'reasonable_accommodations' => $this->reasonable_accommodations ?: null,
             'emergency_contact_name' => $this->emergency_contact_name ?: null,
             'emergency_contact_number' => $this->emergency_contact_number ?: null,
         ]);
 
-        $this->goToStep(3);
+        $this->goToStep(4);
     }
 
     public function savePhoto(): void
@@ -279,7 +305,7 @@ new #[Layout('layouts.application')] class extends Component
             ]);
         }
 
-        $this->goToStep(4);
+        $this->goToStep(5);
     }
 
     public function saveWorkPreferences(): void
@@ -312,7 +338,7 @@ new #[Layout('layouts.application')] class extends Component
 
         $candidate->skills()->sync($skillIds->merge($parentIds)->unique()->values());
 
-        $this->goToStep(5);
+        $this->goToStep(6);
     }
 
     public function addEmploymentHistory(): void
@@ -361,7 +387,7 @@ new #[Layout('layouts.application')] class extends Component
             $this->persistEmploymentHistory($index);
         }
 
-        $this->goToStep(6);
+        $this->goToStep(7);
     }
 
     /** @return array<string, array<int, mixed>> */
@@ -502,7 +528,7 @@ new #[Layout('layouts.application')] class extends Component
 
         $this->application->update([
             'status' => 'completed',
-            'current_step' => 6,
+            'current_step' => 7,
             'completed_at' => now(),
         ]);
     }
@@ -776,6 +802,9 @@ new #[Layout('layouts.application')] class extends Component
         $this->postcode = $candidate->postcode ?? '';
         $this->phone = $candidate->phone ?? '';
         $this->mobile = $candidate->mobile ?? '';
+        $this->has_health_condition_or_disability = $candidate->has_health_condition_or_disability;
+        $this->health_condition_details = $candidate->health_condition_details ?? '';
+        $this->reasonable_accommodations = $candidate->reasonable_accommodations ?? '';
         $this->emergency_contact_name = $candidate->emergency_contact_name ?? '';
         $this->emergency_contact_number = $candidate->emergency_contact_number ?? '';
 
