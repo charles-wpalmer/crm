@@ -28,23 +28,28 @@
         @include('components.application.application-form-steps.personal-details')
     @endif
 
-    {{-- Step 3: Photo upload --}}
+    {{-- Step 3: Medical information --}}
     @if ($currentStep === 3)
+        @include('components.application.application-form-steps.medical-information')
+    @endif
+
+    {{-- Step 4: Photo upload --}}
+    @if ($currentStep === 4)
         @include('components.application.application-form-steps.photo-upload')
     @endif
 
-    {{-- Step 4: Skills & work preferences --}}
-    @if ($currentStep === 4)
+    {{-- Step 5: Skills & work preferences --}}
+    @if ($currentStep === 5)
         @include('components.application.application-form-steps.skills-work')
     @endif
 
-    {{-- Step 5: Employment history --}}
-    @if ($currentStep === 5)
+    {{-- Step 6: Employment history --}}
+    @if ($currentStep === 6)
         @include('components.application.application-form-steps.employment-history')
     @endif
 
-    {{-- Step 6: References --}}
-    @if ($currentStep === 6)
+    {{-- Step 7: References --}}
+    @if ($currentStep === 7)
         @include('components.application.application-form-steps.references')
     @endif
 

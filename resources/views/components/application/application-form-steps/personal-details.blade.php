@@ -281,26 +281,6 @@
         </div>
     </div>
 
-    {{-- Emergency Contact --}}
-    <div class="flex flex-col gap-4">
-        <p class="text-xs font-semibold uppercase tracking-wider text-zinc-400 dark:text-zinc-500">{{ __('Emergency Contact') }}</p>
-
-        <div class="grid grid-cols-2 gap-4">
-            <flux:input
-                wire:model="emergency_contact_name"
-                :label="__('Name')"
-                placeholder="Jane Smith"
-            />
-
-            <flux:input
-                wire:model="emergency_contact_number"
-                type="tel"
-                :label="__('Phone Number')"
-                placeholder="+44 7700 900000"
-            />
-        </div>
-    </div>
-
     @foreach(['first_name', 'last_name', 'date_of_birth', 'address', 'city', 'postcode'] as $field)
         @error($field)
             <flux:error>{{ $message }}</flux:error>
