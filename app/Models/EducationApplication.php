@@ -23,6 +23,8 @@ class EducationApplication extends Model
         'completed_at',
         'cv_temp_path',
         'cv_parsed_data',
+        'terms_accepted_at',
+        'declaration_accepted_at',
     ];
 
     protected $casts = [
@@ -31,6 +33,8 @@ class EducationApplication extends Model
         'email_verified' => 'boolean',
         'cv_parsed_data' => 'array',
         'current_step' => 'integer',
+        'terms_accepted_at' => 'datetime',
+        'declaration_accepted_at' => 'datetime',
     ];
 
     public function educationCandidate(): BelongsTo
