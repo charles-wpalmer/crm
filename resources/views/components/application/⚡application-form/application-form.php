@@ -28,10 +28,11 @@ new #[Layout('layouts.application')] class extends Component
         1 => 'Upload CV',
         2 => 'Your Details',
         3 => 'Medical Information',
-        4 => 'Photo',
-        5 => 'Skills & Work',
-        6 => 'Employment History',
-        7 => 'References',
+        4 => 'Consent',
+        5 => 'Photo',
+        6 => 'Skills & Work',
+        7 => 'Employment History',
+        8 => 'References',
     ];
 
     private const REFERENCE_HISTORY_YEARS = 3;
@@ -94,6 +95,13 @@ new #[Layout('layouts.application')] class extends Component
 
     public string $emergency_contact_number = '';
 
+    // Consent
+    public int $consentSubStep = 1;
+
+    public bool $terms_accepted = false;
+
+    public bool $declaration_accepted = false;
+
     // Skills & work preferences
     public ?int $qualification_id = null;
 
@@ -141,6 +149,14 @@ new #[Layout('layouts.application')] class extends Component
 
         if ($this->currentStep >= 2) {
             $this->hydrateFromCandidate($this->application->educationCandidate);
+        }
+
+        $this->terms_accepted = $this->application->terms_accepted_at !== null;
+        $this->declaration_accepted = $this->application->declaration_accepted_at !== null;
+        $this->consentSubStep = $this->terms_accepted ? 2 : 1;
+
+        if (! $this->declaration_accepted && $this->currentStep > 4) {
+            $this->currentStep = 4;
         }
 
         if ($this->currentStep === 2 && ! empty($this->application->cv_parsed_data)) {
@@ -285,6 +301,32 @@ new #[Layout('layouts.application')] class extends Component
         $this->goToStep(4);
     }
 
+    public function acceptTerms(): void
+    {
+        $this->validate([
+            'terms_accepted' => ['accepted'],
+        ]);
+
+        $this->application->update([
+            'terms_accepted_at' => now(),
+        ]);
+
+        $this->consentSubStep = 2;
+    }
+
+    public function acceptDeclaration(): void
+    {
+        $this->validate([
+            'declaration_accepted' => ['accepted'],
+        ]);
+
+        $this->application->update([
+            'declaration_accepted_at' => now(),
+        ]);
+
+        $this->goToStep(5);
+    }
+
     public function savePhoto(): void
     {
         if (! $this->photo && ! $this->application->educationCandidate->photo_path) {
@@ -305,7 +347,7 @@ new #[Layout('layouts.application')] class extends Component
             ]);
         }
 
-        $this->goToStep(5);
+        $this->goToStep(6);
     }
 
     public function saveWorkPreferences(): void
@@ -338,7 +380,7 @@ new #[Layout('layouts.application')] class extends Component
 
         $candidate->skills()->sync($skillIds->merge($parentIds)->unique()->values());
 
-        $this->goToStep(6);
+        $this->goToStep(7);
     }
 
     public function addEmploymentHistory(): void
@@ -387,7 +429,7 @@ new #[Layout('layouts.application')] class extends Component
             $this->persistEmploymentHistory($index);
         }
 
-        $this->goToStep(7);
+        $this->goToStep(8);
     }
 
     /** @return array<string, array<int, mixed>> */
@@ -528,7 +570,7 @@ new #[Layout('layouts.application')] class extends Component
 
         $this->application->update([
             'status' => 'completed',
-            'current_step' => 7,
+            'current_step' => 8,
             'completed_at' => now(),
         ]);
     }
@@ -783,6 +825,12 @@ new #[Layout('layouts.application')] class extends Component
         }
 
         return Storage::disk('local')->temporaryUrl($photoPath, now()->addMinutes(30));
+    }
+
+    #[Computed]
+    public function kcsiePdfUrl(): string
+    {
+        return Storage::disk('local')->temporaryUrl('kcsie.pdf', now()->addMinutes(30));
     }
 
     private function hydrateFromCandidate(EducationCandidate $candidate): void
