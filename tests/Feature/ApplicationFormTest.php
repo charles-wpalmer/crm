@@ -1,5 +1,6 @@
 <?php
 
+use App\Actions\Applications\ApplicationCompleted;
 use App\Ai\Agents\CvParser;
 use App\Enums\ReferenceStatus;
 use App\Enums\ReferenceType;
@@ -9,14 +10,18 @@ use App\Models\EducationApplication;
 use App\Models\EducationCandidate;
 use App\Models\Industry;
 use App\Models\Qualification;
+use App\Models\User;
 use App\Services\ApplicationAccessSession;
+use Database\Seeders\RoleSeeder;
 use Illuminate\Http\UploadedFile;
+use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Storage;
 use Livewire\Livewire;
 
 beforeEach(function () {
     Storage::fake('local');
     Industry::factory()->create(['name' => 'Education', 'slug' => 'education']);
+    $this->seed(RoleSeeder::class);
 });
 
 function makePendingApplication(): EducationApplication
@@ -53,6 +58,16 @@ test('mount aborts 403 for expired application', function () {
 
     Livewire::test('application.application-form', ['token' => $application->token])
         ->assertStatus(403);
+});
+
+test('mount redirects to login and flashes a toast for a completed application', function () {
+    $application = makePendingApplication();
+    $application->update(['status' => 'completed']);
+
+    Livewire::test('application.application-form', ['token' => $application->token])
+        ->assertRedirect(route('login'));
+
+    expect(session('toast'))->toBe(['text' => 'Application Completed', 'variant' => 'success']);
 });
 
 test('parseCv requires a file when no CV has been uploaded yet', function () {
@@ -1289,7 +1304,7 @@ test('submitApplication rejects references that leave a gap in the last 3 years'
     expect($application->fresh()->status)->toBe('pending');
 });
 
-test('submitApplication persists references and completes the application when history is fully covered', function () {
+test('submitApplication persists references and advances to the document requirements step when history is fully covered', function () {
     $application = makePendingApplication();
     $candidate = $application->educationCandidate;
 
@@ -1331,7 +1346,8 @@ test('submitApplication persists references and completes the application when h
             'consent_to_contact' => true,
         ])
         ->call('submitApplication')
-        ->assertHasNoErrors();
+        ->assertHasNoErrors()
+        ->assertSet('currentStep', 10);
 
     expect($candidate->references()->count())->toBe(2);
 
@@ -1341,9 +1357,112 @@ test('submitApplication persists references and completes the application when h
     expect($first->status)->toBe(ReferenceStatus::Pending);
     expect($first->last_contacted)->toBeNull();
 
+    expect($application->fresh()->status)->toBe('pending');
+    expect($application->fresh()->completed_at)->toBeNull();
+    expect($application->fresh()->current_step)->toBe(10);
+});
+
+test('saveDocumentRequirements requires right to work and dbs answers', function () {
+    $application = makePendingApplication();
+
+    Livewire::test('application.application-form', ['token' => $application->token])
+        ->set('currentStep', 10)
+        ->call('saveDocumentRequirements')
+        ->assertHasErrors(['right_to_work_type', 'has_dbs']);
+});
+
+test('saveDocumentRequirements requires a visa share code when right to work is visa', function () {
+    $application = makePendingApplication();
+
+    Livewire::test('application.application-form', ['token' => $application->token])
+        ->set('currentStep', 10)
+        ->set('right_to_work_type', 'visa')
+        ->set('has_dbs', 'no')
+        ->call('saveDocumentRequirements')
+        ->assertHasErrors(['visa_share_code']);
+});
+
+test('saveDocumentRequirements persists answers and advances to the set password step', function () {
+    $application = makePendingApplication();
+    $candidate = $application->educationCandidate;
+
+    Livewire::test('application.application-form', ['token' => $application->token])
+        ->set('currentStep', 10)
+        ->set('right_to_work_type', 'visa')
+        ->set('visa_share_code', 'ABC123XYZ')
+        ->set('has_dbs', 'no')
+        ->set('has_naric', 'yes')
+        ->call('saveDocumentRequirements')
+        ->assertHasNoErrors()
+        ->assertSet('currentStep', 11);
+
+    $candidate->refresh();
+    expect($candidate->right_to_work_type)->toBe('visa');
+    expect($candidate->visa_share_code)->toBe('ABC123XYZ');
+    expect($candidate->has_dbs)->toBe('no');
+    expect($candidate->has_naric)->toBe('yes');
+});
+
+test('saveDocumentRequirements clears the visa share code when right to work is not visa', function () {
+    $application = makePendingApplication();
+    $candidate = $application->educationCandidate;
+
+    Livewire::test('application.application-form', ['token' => $application->token])
+        ->set('currentStep', 10)
+        ->set('right_to_work_type', 'passport')
+        ->set('has_dbs', 'yes')
+        ->call('saveDocumentRequirements')
+        ->assertHasNoErrors();
+
+    expect($candidate->refresh()->visa_share_code)->toBeNull();
+});
+
+test('completeApplication requires a password with a matching confirmation', function () {
+    $application = makePendingApplication();
+
+    Livewire::test('application.application-form', ['token' => $application->token])
+        ->set('currentStep', 11)
+        ->call('completeApplication')
+        ->assertHasErrors(['password']);
+
+    Livewire::test('application.application-form', ['token' => $application->token])
+        ->set('currentStep', 11)
+        ->set('password', 'super-secret-password')
+        ->set('password_confirmation', 'does-not-match')
+        ->call('completeApplication')
+        ->assertHasErrors(['password']);
+
+    expect($application->fresh()->status)->toBe('pending');
+});
+
+test('completeApplication creates a user linked to the candidate, completes the application, and triggers ApplicationCompleted', function () {
+    $application = makePendingApplication();
+    $candidate = $application->educationCandidate;
+    $candidate->update(['first_name' => 'Jane', 'last_name' => 'Doe', 'email' => 'jane.doe@example.com']);
+
+    ApplicationCompleted::shouldRun()->once();
+
+    Livewire::test('application.application-form', ['token' => $application->token])
+        ->set('currentStep', 11)
+        ->set('password', 'super-secret-password')
+        ->set('password_confirmation', 'super-secret-password')
+        ->call('completeApplication')
+        ->assertHasNoErrors()
+        ->assertRedirect('/candidate');
+
+    $user = User::where('email', 'jane.doe@example.com')->first();
+    expect($user)->not->toBeNull();
+    expect($user->name)->toBe('Jane Doe');
+    expect($user->candidate_id)->toBe($candidate->id);
+    expect($user->candidate_type)->toBe(EducationCandidate::class);
+    expect($user->industries()->pluck('industries.id')->all())->toBe([Industry::where('slug', 'education')->value('id')]);
+    expect($user->hasRole('candidate'))->toBeTrue();
+    expect(Hash::check('super-secret-password', $user->password))->toBeTrue();
+
     expect($application->fresh()->status)->toBe('completed');
     expect($application->fresh()->completed_at)->not->toBeNull();
-    expect($application->fresh()->current_step)->toBe(9);
+    expect($application->fresh()->current_step)->toBe(11);
+    expect(auth()->id())->toBe($user->id);
 });
 
 test('references step does not expose status or last contacted fields to the candidate', function () {
@@ -1613,8 +1732,8 @@ test('progress bar displays the current section name and percentage', function (
 
     Livewire::test('application.application-form', ['token' => $application->token])
         ->assertSee('Medical Information')
-        ->assertSee('Step 3 of 9')
-        ->assertSee('33%');
+        ->assertSee('Step 3 of 11')
+        ->assertSee('27%');
 });
 
 test('viewStep allows navigating back to an already reached step', function () {

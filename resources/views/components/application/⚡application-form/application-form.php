@@ -1,5 +1,6 @@
 <?php
 
+use App\Actions\Applications\ApplicationCompleted;
 use App\Enums\Education\Availability;
 use App\Enums\Education\KeyStage;
 use App\Enums\ReferenceType;
@@ -8,13 +9,16 @@ use App\Models\EducationApplication;
 use App\Models\EducationCandidate;
 use App\Models\Industry;
 use App\Models\Qualification;
+use App\Models\User;
 use App\Services\ApplicationAccessSession;
 use App\Services\CvParserService;
 use App\Services\Document;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Collection;
+use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Validation\Rule;
+use Illuminate\Validation\Rules\Password;
 use Livewire\Attributes\Computed;
 use Livewire\Attributes\Layout;
 use Livewire\Component;
@@ -34,6 +38,8 @@ new #[Layout('layouts.application')] class extends Component
         7 => 'Skills & Work',
         8 => 'Employment History',
         9 => 'References',
+        10 => 'Document Requirements',
+        11 => 'Create Your Account',
     ];
 
     private const CONSENT_SUB_STEP_LABELS = [
@@ -173,6 +179,20 @@ new #[Layout('layouts.application')] class extends Component
 
     public array $cv_parsed_data = [];
 
+    // Document requirements
+    public ?string $right_to_work_type = null;
+
+    public string $visa_share_code = '';
+
+    public ?string $has_dbs = null;
+
+    public ?string $has_naric = null;
+
+    // Account
+    public string $password = '';
+
+    public string $password_confirmation = '';
+
     public function mount(string $token): void
     {
         $this->token = $token;
@@ -184,7 +204,10 @@ new #[Layout('layouts.application')] class extends Component
         }
 
         if ($this->application->status === 'completed') {
-            abort(403, 'Application has been completed.');
+            session()->flash('toast', ['text' => __('Application Completed'), 'variant' => 'success']);
+            $this->redirect(route('login'));
+
+            return;
         }
 
         if ($this->application->status !== 'pending' || $this->application->expires_on < today()) {
@@ -769,11 +792,67 @@ new #[Layout('layouts.application')] class extends Component
             $this->persistReference($index);
         }
 
+        $this->goToStep(10);
+    }
+
+    public function saveDocumentRequirements(): void
+    {
+        $this->validate([
+            'right_to_work_type' => ['required', 'in:birth_certificate,passport,visa'],
+            'visa_share_code' => ['required_if:right_to_work_type,visa', 'nullable', 'string', 'max:255'],
+            'has_dbs' => ['required', 'in:yes,no'],
+            'has_naric' => ['nullable', 'in:yes,no'],
+        ]);
+
+        $this->application->educationCandidate->update([
+            'right_to_work_type' => $this->right_to_work_type,
+            'visa_share_code' => $this->right_to_work_type === 'visa' ? $this->visa_share_code : null,
+            'has_dbs' => $this->has_dbs,
+            'has_naric' => $this->has_naric,
+        ]);
+
+        $this->goToStep(11);
+    }
+
+    public function completeApplication(): void
+    {
+        $this->validate([
+            'password' => ['required', 'confirmed', Password::defaults()],
+        ]);
+
+        $candidate = $this->application->educationCandidate;
+
+        $user = User::updateOrCreate(
+            ['email' => $candidate->email],
+            [
+                'name' => trim("{$candidate->first_name} {$candidate->last_name}"),
+                'password' => $this->password,
+                'company_id' => $candidate->company_id,
+                'candidate_id' => $candidate->id,
+                'candidate_type' => $candidate::class,
+            ]
+        );
+
+        $industrySlug = Industry::slugForCandidateModel($candidate::class);
+        $industryId = $industrySlug ? Industry::where('slug', $industrySlug)->value('id') : null;
+
+        if ($industryId) {
+            $user->industries()->syncWithoutDetaching([$industryId]);
+        }
+
+        $user->assignRole('candidate');
+
         $this->application->update([
             'status' => 'completed',
-            'current_step' => 9,
+            'current_step' => 11,
             'completed_at' => now(),
         ]);
+
+        ApplicationCompleted::run($this->application);
+
+        Auth::login($user);
+
+        $this->redirect('/candidate');
     }
 
     /** @return array<string, array<int, mixed>> */
@@ -1132,6 +1211,10 @@ new #[Layout('layouts.application')] class extends Component
         $this->unspent_convictions = $candidate->unspent_convictions;
         $this->unspent_convictions_details = $candidate->unspent_convictions_details ?? '';
         $this->spent_convictions_not_protected = $candidate->spent_convictions_not_protected;
+        $this->right_to_work_type = $candidate->right_to_work_type;
+        $this->visa_share_code = $candidate->visa_share_code ?? '';
+        $this->has_dbs = $candidate->has_dbs;
+        $this->has_naric = $candidate->has_naric;
 
         $this->qualification_id = $candidate->qualification_id;
         $this->availability = $candidate->availability ?? [];
