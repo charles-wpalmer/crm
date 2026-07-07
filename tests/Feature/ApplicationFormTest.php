@@ -379,7 +379,7 @@ test('acceptDeclaration requires the declaration checkbox to be checked', functi
     expect($application->fresh()->declaration_accepted_at)->toBeNull();
 });
 
-test('acceptDeclaration records the timestamp and advances to the employment conduct step', function () {
+test('acceptDeclaration records the timestamp and moves to the security clearance sub-step without leaving the consent step', function () {
     $application = makePendingApplication();
 
     Livewire::test('application.application-form', ['token' => $application->token])
@@ -388,10 +388,282 @@ test('acceptDeclaration records the timestamp and advances to the employment con
         ->set('declaration_accepted', true)
         ->call('acceptDeclaration')
         ->assertHasNoErrors()
-        ->assertSet('currentStep', 5);
+        ->assertSet('currentStep', 4)
+        ->assertSet('consentSubStep', 4);
 
     expect($application->fresh()->declaration_accepted_at)->not->toBeNull();
-    expect($application->fresh()->current_step)->toBe(5);
+});
+
+test('saveSecurityClearance requires an answer for both questions', function () {
+    $application = makePendingApplication();
+
+    Livewire::test('application.application-form', ['token' => $application->token])
+        ->set('currentStep', 4)
+        ->set('consentSubStep', 4)
+        ->call('saveSecurityClearance')
+        ->assertHasErrors(['security_clearance_agreed', 'lived_overseas_six_months']);
+});
+
+test('saveSecurityClearance requires details when the candidate has lived overseas', function () {
+    $application = makePendingApplication();
+
+    Livewire::test('application.application-form', ['token' => $application->token])
+        ->set('currentStep', 4)
+        ->set('consentSubStep', 4)
+        ->set('security_clearance_agreed', 'no')
+        ->set('lived_overseas_six_months', 'yes')
+        ->call('saveSecurityClearance')
+        ->assertHasErrors(['overseas_details']);
+});
+
+test('saveSecurityClearance persists answers and moves to the rehabilitation of offenders sub-step even when the candidate disagrees', function () {
+    $application = makePendingApplication();
+    $candidate = $application->educationCandidate;
+
+    Livewire::test('application.application-form', ['token' => $application->token])
+        ->set('currentStep', 4)
+        ->set('consentSubStep', 4)
+        ->set('security_clearance_agreed', 'no')
+        ->set('lived_overseas_six_months', 'yes')
+        ->set('overseas_details', 'Worked in Spain from 2021 to 2022.')
+        ->call('saveSecurityClearance')
+        ->assertHasNoErrors()
+        ->assertSet('currentStep', 4)
+        ->assertSet('consentSubStep', 5);
+
+    $candidate->refresh();
+    expect($candidate->lived_overseas_six_months)->toBe('yes');
+    expect($candidate->overseas_details)->toBe('Worked in Spain from 2021 to 2022.');
+    expect($application->fresh()->security_clearance_agreed)->toBe('no');
+    expect($application->fresh()->security_clearance_accepted_at)->not->toBeNull();
+});
+
+test('saveSecurityClearance clears overseas details when the candidate has not lived overseas', function () {
+    $application = makePendingApplication();
+    $candidate = $application->educationCandidate;
+
+    Livewire::test('application.application-form', ['token' => $application->token])
+        ->set('currentStep', 4)
+        ->set('consentSubStep', 4)
+        ->set('security_clearance_agreed', 'yes')
+        ->set('lived_overseas_six_months', 'no')
+        ->call('saveSecurityClearance')
+        ->assertHasNoErrors();
+
+    expect($candidate->refresh()->overseas_details)->toBeNull();
+});
+
+test('saveRehabilitationOfOffenders requires an answer for both questions', function () {
+    $application = makePendingApplication();
+
+    Livewire::test('application.application-form', ['token' => $application->token])
+        ->set('currentStep', 4)
+        ->set('consentSubStep', 5)
+        ->call('saveRehabilitationOfOffenders')
+        ->assertHasErrors(['unspent_convictions', 'spent_convictions_not_protected']);
+});
+
+test('saveRehabilitationOfOffenders does not require additional details when unspent convictions are declared', function () {
+    $application = makePendingApplication();
+    $candidate = $application->educationCandidate;
+
+    Livewire::test('application.application-form', ['token' => $application->token])
+        ->set('currentStep', 4)
+        ->set('consentSubStep', 5)
+        ->set('unspent_convictions', 'yes')
+        ->set('spent_convictions_not_protected', 'no')
+        ->call('saveRehabilitationOfOffenders')
+        ->assertHasNoErrors();
+
+    expect($candidate->refresh()->unspent_convictions)->toBe('yes');
+    expect($candidate->unspent_convictions_details)->toBeNull();
+});
+
+test('saveRehabilitationOfOffenders persists answers and additional details, then moves to the working time regulations sub-step', function () {
+    $application = makePendingApplication();
+    $candidate = $application->educationCandidate;
+
+    Livewire::test('application.application-form', ['token' => $application->token])
+        ->set('currentStep', 4)
+        ->set('consentSubStep', 5)
+        ->set('unspent_convictions', 'yes')
+        ->set('unspent_convictions_details', 'Completed a rehabilitation course in 2023.')
+        ->set('spent_convictions_not_protected', 'no')
+        ->call('saveRehabilitationOfOffenders')
+        ->assertHasNoErrors()
+        ->assertSet('currentStep', 4)
+        ->assertSet('consentSubStep', 6);
+
+    $candidate->refresh();
+    expect($candidate->unspent_convictions)->toBe('yes');
+    expect($candidate->unspent_convictions_details)->toBe('Completed a rehabilitation course in 2023.');
+    expect($candidate->spent_convictions_not_protected)->toBe('no');
+    expect($application->fresh()->rehabilitation_of_offenders_completed_at)->not->toBeNull();
+});
+
+test('saveRehabilitationOfOffenders clears additional details when there are no unspent convictions', function () {
+    $application = makePendingApplication();
+    $candidate = $application->educationCandidate;
+
+    Livewire::test('application.application-form', ['token' => $application->token])
+        ->set('currentStep', 4)
+        ->set('consentSubStep', 5)
+        ->set('unspent_convictions', 'no')
+        ->set('spent_convictions_not_protected', 'no')
+        ->call('saveRehabilitationOfOffenders')
+        ->assertHasNoErrors();
+
+    expect($candidate->refresh()->unspent_convictions_details)->toBeNull();
+});
+
+test('mount resumes at the rehabilitation of offenders sub-step when security clearance has already been accepted', function () {
+    $application = makePendingApplication();
+    $application->update([
+        'terms_of_engagement_accepted_at' => now(),
+        'terms_accepted_at' => now(),
+        'declaration_accepted_at' => now(),
+        'security_clearance_agreed' => 'yes',
+        'security_clearance_accepted_at' => now(),
+    ]);
+
+    Livewire::test('application.application-form', ['token' => $application->token])
+        ->set('currentStep', 4)
+        ->assertSet('consentSubStep', 5)
+        ->assertSet('security_clearance_agreed', 'yes');
+});
+
+test('saveWorkingTimeRegulations requires an answer', function () {
+    $application = makePendingApplication();
+
+    Livewire::test('application.application-form', ['token' => $application->token])
+        ->set('currentStep', 4)
+        ->set('consentSubStep', 6)
+        ->call('saveWorkingTimeRegulations')
+        ->assertHasErrors(['working_time_regulations_opt_out']);
+
+    expect($application->fresh()->working_time_regulations_accepted_at)->toBeNull();
+});
+
+test('saveWorkingTimeRegulations persists the answer and moves to the disqualification sub-step', function () {
+    $application = makePendingApplication();
+
+    Livewire::test('application.application-form', ['token' => $application->token])
+        ->set('currentStep', 4)
+        ->set('consentSubStep', 6)
+        ->set('working_time_regulations_opt_out', 'yes')
+        ->call('saveWorkingTimeRegulations')
+        ->assertHasNoErrors()
+        ->assertSet('currentStep', 4)
+        ->assertSet('consentSubStep', 7);
+
+    expect($application->fresh()->working_time_regulations_opt_out)->toBe('yes');
+    expect($application->fresh()->working_time_regulations_accepted_at)->not->toBeNull();
+});
+
+test('mount resumes at the working time regulations sub-step when rehabilitation of offenders has already been completed', function () {
+    $application = makePendingApplication();
+    $application->update([
+        'terms_of_engagement_accepted_at' => now(),
+        'terms_accepted_at' => now(),
+        'declaration_accepted_at' => now(),
+        'security_clearance_agreed' => 'yes',
+        'security_clearance_accepted_at' => now(),
+        'rehabilitation_of_offenders_completed_at' => now(),
+    ]);
+
+    Livewire::test('application.application-form', ['token' => $application->token])
+        ->set('currentStep', 4)
+        ->assertSet('consentSubStep', 6);
+});
+
+test('saveDisqualificationUnderChildcareAct requires an answer for all three questions', function () {
+    $application = makePendingApplication();
+
+    Livewire::test('application.application-form', ['token' => $application->token])
+        ->set('currentStep', 4)
+        ->set('consentSubStep', 7)
+        ->call('saveDisqualificationUnderChildcareAct')
+        ->assertHasErrors([
+            'childcare_act_guidance_read',
+            'childcare_act_no_disqualification_reasons',
+            'childcare_act_will_notify_changes',
+        ]);
+});
+
+test('saveDisqualificationUnderChildcareAct requires details for any answer of no', function () {
+    $application = makePendingApplication();
+
+    Livewire::test('application.application-form', ['token' => $application->token])
+        ->set('currentStep', 4)
+        ->set('consentSubStep', 7)
+        ->set('childcare_act_guidance_read', 'no')
+        ->set('childcare_act_no_disqualification_reasons', 'no')
+        ->set('childcare_act_will_notify_changes', 'no')
+        ->call('saveDisqualificationUnderChildcareAct')
+        ->assertHasErrors([
+            'childcare_act_guidance_read_details',
+            'childcare_act_no_disqualification_reasons_details',
+            'childcare_act_will_notify_changes_details',
+        ]);
+});
+
+test('saveDisqualificationUnderChildcareAct persists answers and details, then advances to the employment conduct step', function () {
+    $application = makePendingApplication();
+
+    Livewire::test('application.application-form', ['token' => $application->token])
+        ->set('currentStep', 4)
+        ->set('consentSubStep', 7)
+        ->set('childcare_act_guidance_read', 'no')
+        ->set('childcare_act_guidance_read_details', 'Need clarification on section 3.')
+        ->set('childcare_act_no_disqualification_reasons', 'yes')
+        ->set('childcare_act_will_notify_changes', 'yes')
+        ->call('saveDisqualificationUnderChildcareAct')
+        ->assertHasNoErrors()
+        ->assertSet('currentStep', 5);
+
+    $application->refresh();
+    expect($application->childcare_act_guidance_read)->toBe('no');
+    expect($application->childcare_act_guidance_read_details)->toBe('Need clarification on section 3.');
+    expect($application->childcare_act_no_disqualification_reasons)->toBe('yes');
+    expect($application->childcare_act_will_notify_changes)->toBe('yes');
+    expect($application->disqualification_under_childcare_act_completed_at)->not->toBeNull();
+    expect($application->current_step)->toBe(5);
+});
+
+test('saveDisqualificationUnderChildcareAct clears details for answers of yes', function () {
+    $application = makePendingApplication();
+
+    Livewire::test('application.application-form', ['token' => $application->token])
+        ->set('currentStep', 4)
+        ->set('consentSubStep', 7)
+        ->set('childcare_act_guidance_read', 'yes')
+        ->set('childcare_act_no_disqualification_reasons', 'yes')
+        ->set('childcare_act_will_notify_changes', 'yes')
+        ->call('saveDisqualificationUnderChildcareAct')
+        ->assertHasNoErrors();
+
+    $application->refresh();
+    expect($application->childcare_act_guidance_read_details)->toBeNull();
+    expect($application->childcare_act_no_disqualification_reasons_details)->toBeNull();
+    expect($application->childcare_act_will_notify_changes_details)->toBeNull();
+});
+
+test('mount resumes at the disqualification sub-step when working time regulations has already been accepted', function () {
+    $application = makePendingApplication();
+    $application->update([
+        'terms_of_engagement_accepted_at' => now(),
+        'terms_accepted_at' => now(),
+        'declaration_accepted_at' => now(),
+        'security_clearance_agreed' => 'yes',
+        'security_clearance_accepted_at' => now(),
+        'rehabilitation_of_offenders_completed_at' => now(),
+        'working_time_regulations_opt_out' => 'yes',
+        'working_time_regulations_accepted_at' => now(),
+    ]);
+
+    Livewire::test('application.application-form', ['token' => $application->token])
+        ->set('currentStep', 4)
+        ->assertSet('consentSubStep', 7);
 });
 
 test('mount resumes at the kcsie sub-step when only the terms of engagement have been accepted', function () {
@@ -412,6 +684,20 @@ test('mount resumes at the declaration sub-step when terms have already been acc
         ->set('currentStep', 4)
         ->assertSet('consentSubStep', 3)
         ->assertSet('terms_accepted', true);
+});
+
+test('mount resumes at the security clearance sub-step when the declaration has already been accepted', function () {
+    $application = makePendingApplication();
+    $application->update([
+        'terms_of_engagement_accepted_at' => now(),
+        'terms_accepted_at' => now(),
+        'declaration_accepted_at' => now(),
+    ]);
+
+    Livewire::test('application.application-form', ['token' => $application->token])
+        ->set('currentStep', 4)
+        ->assertSet('consentSubStep', 4)
+        ->assertSet('declaration_accepted', true);
 });
 
 test('the consent step generates a url for the kcsie pdf', function () {
@@ -1135,8 +1421,15 @@ test('mount resumes at the persisted step and hydrates saved candidate data', fu
         'education_candidate_id' => $candidate->id,
         'status' => 'pending',
         'current_step' => 6,
+        'terms_of_engagement_accepted_at' => now(),
         'terms_accepted_at' => now(),
         'declaration_accepted_at' => now(),
+        'security_clearance_agreed' => 'yes',
+        'security_clearance_accepted_at' => now(),
+        'rehabilitation_of_offenders_completed_at' => now(),
+        'working_time_regulations_opt_out' => 'yes',
+        'working_time_regulations_accepted_at' => now(),
+        'disqualification_under_childcare_act_completed_at' => now(),
     ]);
 
     ApplicationAccessSession::markVerified($application->token);
@@ -1162,6 +1455,70 @@ test('mount defaults to the consent step when a candidate has not completed the 
         ->assertSet('currentStep', 4);
 
     expect($application->fresh()->current_step)->toBe(6);
+});
+
+test('mount defaults to the consent step and resumes at the first unaccepted sub-step, even if only a later one is incomplete', function () {
+    $application = EducationApplication::factory()->create([
+        'education_candidate_id' => EducationCandidate::factory()->create()->id,
+        'status' => 'pending',
+        'current_step' => 6,
+        'terms_of_engagement_accepted_at' => now(),
+        'terms_accepted_at' => now(),
+        'declaration_accepted_at' => now(),
+        'security_clearance_agreed' => 'yes',
+        'security_clearance_accepted_at' => now(),
+        'rehabilitation_of_offenders_completed_at' => now(),
+        // working_time_regulations_accepted_at intentionally left unset.
+    ]);
+
+    ApplicationAccessSession::markVerified($application->token);
+
+    Livewire::test('application.application-form', ['token' => $application->token])
+        ->assertSet('currentStep', 4)
+        ->assertSet('consentSubStep', 6);
+
+    expect($application->fresh()->current_step)->toBe(6);
+});
+
+test('viewConsentSubStep allows navigating back to an already reached consent sub-step', function () {
+    $application = makePendingApplication();
+    $application->update([
+        'terms_of_engagement_accepted_at' => now(),
+        'terms_accepted_at' => now(),
+        'declaration_accepted_at' => now(),
+    ]);
+
+    Livewire::test('application.application-form', ['token' => $application->token])
+        ->set('currentStep', 4)
+        ->assertSet('consentSubStep', 4)
+        ->call('viewConsentSubStep', 1)
+        ->assertSet('consentSubStep', 1)
+        ->assertSee('Terms of Engagement');
+});
+
+test('viewConsentSubStep ignores attempts to jump ahead of the furthest reached consent sub-step', function () {
+    $application = makePendingApplication();
+    $application->update(['terms_of_engagement_accepted_at' => now()]);
+
+    Livewire::test('application.application-form', ['token' => $application->token])
+        ->set('currentStep', 4)
+        ->assertSet('consentSubStep', 2)
+        ->call('viewConsentSubStep', 5)
+        ->assertSet('consentSubStep', 2);
+});
+
+test('the consent sub-step progress bar displays the current section name and percentage', function () {
+    $application = makePendingApplication();
+    $application->update([
+        'terms_of_engagement_accepted_at' => now(),
+        'terms_accepted_at' => now(),
+    ]);
+
+    Livewire::test('application.application-form', ['token' => $application->token])
+        ->set('currentStep', 4)
+        ->assertSee('Declaration')
+        ->assertSee('Section 3 of 7')
+        ->assertSee('43%');
 });
 
 test('mount hydrates a saved reference\'s contact_now value', function () {
@@ -1223,8 +1580,15 @@ test('mount hydrates qualification, work preferences, and skills already saved o
         'education_candidate_id' => $candidate->id,
         'status' => 'pending',
         'current_step' => 7,
+        'terms_of_engagement_accepted_at' => now(),
         'terms_accepted_at' => now(),
         'declaration_accepted_at' => now(),
+        'security_clearance_agreed' => 'yes',
+        'security_clearance_accepted_at' => now(),
+        'rehabilitation_of_offenders_completed_at' => now(),
+        'working_time_regulations_opt_out' => 'yes',
+        'working_time_regulations_accepted_at' => now(),
+        'disqualification_under_childcare_act_completed_at' => now(),
     ]);
 
     ApplicationAccessSession::markVerified($application->token);
@@ -1312,7 +1676,17 @@ test('viewStep ignores attempts to jump ahead of the furthest reached step', fun
 
 test('navigating back then forward again does not regress the persisted furthest step', function () {
     $application = makePendingApplication();
-    $application->update(['terms_accepted_at' => now(), 'declaration_accepted_at' => now()]);
+    $application->update([
+        'terms_of_engagement_accepted_at' => now(),
+        'terms_accepted_at' => now(),
+        'declaration_accepted_at' => now(),
+        'security_clearance_agreed' => 'yes',
+        'security_clearance_accepted_at' => now(),
+        'rehabilitation_of_offenders_completed_at' => now(),
+        'working_time_regulations_opt_out' => 'yes',
+        'working_time_regulations_accepted_at' => now(),
+        'disqualification_under_childcare_act_completed_at' => now(),
+    ]);
 
     Livewire::test('application.application-form', ['token' => $application->token])
         ->set('currentStep', 2)

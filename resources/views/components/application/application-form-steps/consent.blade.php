@@ -1,10 +1,45 @@
-@if ($consentSubStep === 1)
-    <x-auth-header
-        :title="__('Terms of Engagement')"
-        :description="__('Please read the terms below in full before continuing.')"
-    />
+<div class="mb-6 flex flex-col gap-3">
+    <div class="flex items-center justify-end text-sm">
+        <span class="text-zinc-500 dark:text-zinc-400">
+            {{ __('Section :current of :total', ['current' => $consentSubStep, 'total' => $this->totalConsentSubSteps]) }} &middot; {{ $this->consentSubStepProgressPercentage }}%
+        </span>
+    </div>
 
-    <div class="mt-6 flex flex-col gap-6">
+    <div class="h-1.5 w-full overflow-hidden rounded-full bg-zinc-200 dark:bg-zinc-700">
+        <div class="h-full rounded-full bg-[var(--color-accent)] transition-all duration-300" style="width: {{ $this->consentSubStepProgressPercentage }}%"></div>
+    </div>
+
+    <div class="flex items-center justify-between">
+        <flux:button
+            type="button"
+            icon="chevron-left"
+            square
+            size="sm"
+            variant="ghost"
+            aria-label="{{ __('Back') }}"
+            wire:click="viewConsentSubStep({{ $consentSubStep - 1 }})"
+            :disabled="$consentSubStep <= 1"
+        />
+
+        <span class="text-sm font-medium text-zinc-700 dark:text-zinc-300">
+            {{ $this->consentSubStepLabels[$consentSubStep] ?? '' }}
+        </span>
+
+        <flux:button
+            type="button"
+            icon="chevron-right"
+            square
+            size="sm"
+            variant="ghost"
+            aria-label="{{ __('Forward') }}"
+            wire:click="viewConsentSubStep({{ $consentSubStep + 1 }})"
+            :disabled="$consentSubStep >= $this->furthestConsentSubStep"
+        />
+    </div>
+</div>
+
+@if ($consentSubStep === 1)
+    <div class="flex flex-col gap-6">
         <div class="flex max-h-112 flex-col gap-4 overflow-y-auto rounded-lg border border-zinc-200 p-4 text-sm text-zinc-600 dark:border-white/10 dark:text-zinc-400">
             <p>{{ __(':company (“Employment Business”)', ['company' => $this->employmentBusinessName]) }}</p>
 
@@ -181,13 +216,8 @@
 @endif
 
 @if ($consentSubStep === 2)
-    <x-auth-header
-        :title="__('Keeping Children Safe in Education')"
-        :description="__('Please read the document below in full before continuing.')"
-    />
-
     <div
-        class="mt-6 flex flex-col gap-4"
+        class="flex flex-col gap-4"
         x-data="{
             scrolledToBottom: false,
             checkScroll() {
@@ -232,12 +262,7 @@
 @endif
 
 @if ($consentSubStep === 3)
-    <x-auth-header
-        :title="__('Declaration')"
-        :description="__('Please read the declaration below in full before continuing.')"
-    />
-
-    <div class="mt-6 flex flex-col gap-6">
+    <div class="flex flex-col gap-6">
         <div class="flex max-h-112 flex-col gap-4 overflow-y-auto rounded-lg border border-zinc-200 p-4 text-sm text-zinc-600 dark:border-white/10 dark:text-zinc-400">
             <p>{{ __(':company helps its clients and job seekers find employment. To be able to offer these services, we must handle personal data (including sensitive personal data), and in doing so, we take on the role of a data controller. This is the reason we are requesting your personal information on this form. We are required to follow all applicable data protection rules while handling your personal information. Due to these rules, we are required to provide you with a privacy statement outlining how we manage your personal data. You may find this statement on our website or upon request.', ['company' => config('app.name')]) }}</p>
 
@@ -289,4 +314,270 @@
             {{ __('Next') }}
         </flux:button>
     </div>
+@endif
+
+@if ($consentSubStep === 4)
+    <form wire:submit="saveSecurityClearance" class="flex flex-col gap-6">
+        <div class="flex max-h-112 flex-col gap-4 overflow-y-auto rounded-lg border border-zinc-200 p-4 text-sm text-zinc-600 dark:border-white/10 dark:text-zinc-400">
+            <p>{{ __('The term "Disclosure" refers to both the document that is produced when a DBS check has been completed as well as the service offered by the Disclosure and Barring Scheme (DBS).') }}</p>
+
+            <p>{{ __("The Rehabilitation of Offenders Act of 1974's exempted questions are met by :company, and all of our agency employees are submitted to Enhanced Disclosure checks from the Disclosure Barring Service. Details of any unfiltered warnings, reprimands, last warnings, and convictions will be included here.", ['company' => $this->employmentBusinessName]) }}</p>
+
+            <p>{{ __(':company requires that all candidates must possess an enhanced child workforce DBS Certificate issued by :company or a DBS that is subscribed to the update service. We are unable to accept DBS certificates that have been processed for voluntary roles or certificates that have been checked against the Adult workforce due to the nature of the work :company offers. We fully adhere to the DBS Code of Practice, and :company organises the processing of DBS certifications. Every 6 months, the DBS status of the candidates DBS will be checked, this is done by checking the update service for any changes.', ['company' => $this->employmentBusinessName]) }}</p>
+
+            <p>{{ __('The DBS cost is £64.20 and must be paid at the time of registration. Currently, we employ a Registered Umbrella Body called UCheck for the non-refundable process.') }}</p>
+
+            <p>{{ __('The agency worker is responsible for the cost. The price for the Enhanced DBS is £49.50, the VAT is £2.45, and the administrative/processing costs are £12.25.') }}</p>
+
+            <p>{{ __(':company can check for any changes once a year, the candidate must subscribe to the update service in order for this to happen. The candidate is in charge of paying the annual fee of £16 for the update service. Please visit :url for further information about the update service.', ['company' => $this->employmentBusinessName, 'url' => 'https://www.gov.uk/dbs-update-service']) }}</p>
+
+            <p>{{ __("An application or candidate won't necessarily be rejected if they disclose prior offenses. Any issue raised in a disclosure will be discussed with the candidate.") }}</p>
+
+            <p>{{ __('Visit :url for additional details on the DBS Code of Practice and the Disclosure and Barring Scheme.', ['url' => 'https://www.gov.uk/government/organisations/disclosure-and-barring-service/about']) }}</p>
+        </div>
+
+        <div class="flex flex-col gap-2">
+            <flux:radio.group
+                wire:model="security_clearance_agreed"
+                variant="segmented"
+                :label="__('Do you agree?')"
+            >
+                <flux:radio value="yes" label="{{ __('Yes') }}" />
+                <flux:radio value="no" label="{{ __('No') }}" />
+            </flux:radio.group>
+
+            @error('security_clearance_agreed')
+                <flux:error>{{ $message }}</flux:error>
+            @enderror
+        </div>
+
+        <div class="flex flex-col gap-2">
+            <flux:radio.group
+                wire:model="lived_overseas_six_months"
+                variant="segmented"
+                :label="__('Have you been overseas in one country for an uninterrupted period of 6 months or more within the last 5 years?')"
+            >
+                <flux:radio value="yes" label="{{ __('Yes') }}" />
+                <flux:radio value="no" label="{{ __('No') }}" />
+            </flux:radio.group>
+
+            @error('lived_overseas_six_months')
+                <flux:error>{{ $message }}</flux:error>
+            @enderror
+        </div>
+
+        <div x-show="$wire.lived_overseas_six_months === 'yes'">
+            <flux:textarea
+                wire:model="overseas_details"
+                :label="__('Please specify any applicable nations')"
+                :description="__(':company may need a police clearance from any country that meets the requirements listed above, so please specify any applicable nations: if you have an overseas police check and it was finished before you left the country in question, it should not have been given more than six months before your departure date.', ['company' => $this->employmentBusinessName])"
+                rows="4"
+            />
+
+            @error('overseas_details')
+                <flux:error>{{ $message }}</flux:error>
+            @enderror
+        </div>
+
+        <flux:button type="submit" variant="primary" class="w-full">
+            {{ __('Next') }}
+        </flux:button>
+    </form>
+@endif
+
+@if ($consentSubStep === 5)
+    <form wire:submit="saveRehabilitationOfOffenders" class="flex flex-col gap-6">
+        <div class="flex max-h-112 flex-col gap-4 overflow-y-auto rounded-lg border border-zinc-200 p-4 text-sm text-zinc-600 dark:border-white/10 dark:text-zinc-400">
+            <p>{{ __('You are applying for work in roles which are exempt from the Rehabilitation of Offenders Act 1974. For this reason, you are required to disclose information about both spent and unspent convictions.') }}</p>
+
+            <p>{{ __('You are not required to declare any information about protected offences (offences to which the filtering rules apply). If you require further information about convictions which are unspent/spent, you can contact organisations such as :nacro or :unlock for further assistance.', ['nacro' => 'NACRO (https://www.nacro.org.uk)', 'unlock' => 'Unlock (http://www.unlock.org.uk)']) }}</p>
+
+            <p>{{ __('We will seek to put forward/supply the best possible candidates to our clients. Having a criminal conviction will not necessarily exclude you from the process.') }}</p>
+
+            <p>{{ __('Failure to declare a conviction may require us to exclude you from our register if the offence is not declared but later comes to light. If you are working in an assignment with a client at the time that we are made aware of a conviction that you have not disclosed to us, we may be legally required to inform our client of that information and your assignment may be terminated.') }}</p>
+        </div>
+
+        <div class="flex flex-col gap-2">
+            <flux:radio.group
+                wire:model="unspent_convictions"
+                variant="segmented"
+                :label="__('Do you have any unspent conditional cautions or convictions under the Rehabilitation of Offenders Act 1974?')"
+            >
+                <flux:radio value="yes" label="{{ __('Yes') }}" />
+                <flux:radio value="no" label="{{ __('No') }}" />
+            </flux:radio.group>
+
+            @error('unspent_convictions')
+                <flux:error>{{ $message }}</flux:error>
+            @enderror
+        </div>
+
+        <div x-show="$wire.unspent_convictions === 'yes'">
+            <flux:textarea
+                wire:model="unspent_convictions_details"
+                :label="__('Additional information (optional)')"
+                :description="__('If you have declared any convictions you are welcome to provide us with any additional information that you think may be relevant and which will help us to determine your suitability to be put forward for roles with our clients. This could include, for example information about the circumstances of the offence, any work (paid or voluntary) or training that you have undertaken since, change in your circumstances etc.')"
+                rows="4"
+            />
+
+            @error('unspent_convictions_details')
+                <flux:error>{{ $message }}</flux:error>
+            @enderror
+        </div>
+
+        <div class="flex flex-col gap-2">
+            <flux:radio.group
+                wire:model="spent_convictions_not_protected"
+                variant="segmented"
+                :label="__('Do you have any adult cautions (simple or conditional) or spent convictions that are not protected as defined by the Rehabilitation of Offenders Act 1974 (Exceptions) Order 1975 (Amendment) (England and Wales) Order 2020?')"
+            >
+                <flux:radio value="yes" label="{{ __('Yes') }}" />
+                <flux:radio value="no" label="{{ __('No') }}" />
+            </flux:radio.group>
+
+            @error('spent_convictions_not_protected')
+                <flux:error>{{ $message }}</flux:error>
+            @enderror
+        </div>
+
+        <flux:button type="submit" variant="primary" class="w-full">
+            {{ __('Next') }}
+        </flux:button>
+    </form>
+@endif
+
+@if ($consentSubStep === 6)
+    <form wire:submit="saveWorkingTimeRegulations" class="flex flex-col gap-6">
+        <div class="flex flex-col gap-4 rounded-lg bg-zinc-50 p-4 text-sm text-zinc-600 dark:bg-white/5 dark:text-zinc-400">
+            <p>{{ __('Under the Working Time Regulations 1988 an individual is not permitted to work more than an average of 48 hours per week. By completing this application form you will be deemed to have opted out of these regulation. This means you will have the option to work for more than 48 hours per week if you wish. For clarification, you are not under any obligation to work more than 48 hours per week.') }}</p>
+        </div>
+
+        <div class="flex flex-col gap-2">
+            <flux:radio.group
+                wire:model="working_time_regulations_opt_out"
+                variant="segmented"
+                :label="__('Do you agree to opt out of the Working Time Regulations 1988 48-hour weekly limit?')"
+            >
+                <flux:radio value="yes" label="{{ __('Yes') }}" />
+                <flux:radio value="no" label="{{ __('No') }}" />
+            </flux:radio.group>
+
+            @error('working_time_regulations_opt_out')
+                <flux:error>{{ $message }}</flux:error>
+            @enderror
+        </div>
+
+        <flux:button type="submit" variant="primary" class="w-full">
+            {{ __('Next') }}
+        </flux:button>
+    </form>
+@endif
+
+@if ($consentSubStep === 7)
+    <form wire:submit="saveDisqualificationUnderChildcareAct" class="flex flex-col gap-6">
+        <div class="flex max-h-112 flex-col gap-4 overflow-y-auto rounded-lg border border-zinc-200 p-4 text-sm text-zinc-600 dark:border-white/10 dark:text-zinc-400">
+            <p>{{ __("Please see the attached link to the Department of Education's Disqualification under the Childcare Act 2006 - Statutory Guidance for Schools (the statutory guidance), which is dated July 2018.") }}</p>
+
+            <p><a href="https://www.gov.uk/government/publications/disqualification-under-the-childcare-act-2006" target="_blank" rel="noopener" class="text-[var(--color-accent)] underline">https://www.gov.uk/government/publications/disqualification-under-the-childcare-act-2006</a></p>
+
+            <p>{{ __('It outlines the conditions under which people are prohibited from performing certain childcare job (related childcare labor) in accordance with the pertinent statutory laws. We must determine if any candidates seeking employment that would need relevant childcare work are barred from performing that kind of job as part of our safeguarding assessments. People may not be eligible if they have either been found guilty of or are under the control of a relevant order.') }}</p>
+
+            <p>{{ __('If you can confirm the following, please consult the DfE Guidance, which offers more information, and indicate so below.') }}</p>
+
+            <ul class="list-disc pl-5">
+                <li>{{ __("The disclosure of one's own spent and unspent convictions is mandatory for specific jobs involving children and childcare.") }}</li>
+                <li>{{ __('You are not, however, obligated to: provide any information on any protected (or filtered) offenses when completing this form.') }}</li>
+                <li>{{ __("reveal any details on any third party's expired convictions.") }}</li>
+            </ul>
+
+            <p>{{ __('If you are ineligible under the applicable legislative restrictions, we must inform you that it is illegal for you to work in a relevant childcare function or to be directly involved with the administration of such a provider.') }}</p>
+
+            <p>{{ __("We won't be able to hire you for a position that requires appropriate childcare duties if you are rejected. However, in accordance with the statutory guidelines, you may be able to apply to Ofsted for a waiver of disqualification. To learn more about the application procedure, you should get in touch with Ofsted directly.") }}</p>
+        </div>
+
+        <div class="flex flex-col gap-2">
+            <flux:radio.group
+                wire:model="childcare_act_guidance_read"
+                variant="segmented"
+                :label="__('I accept that I have read the DfE Guidance.')"
+            >
+                <flux:radio value="yes" label="{{ __('Yes') }}" />
+                <flux:radio value="no" label="{{ __('No') }}" />
+            </flux:radio.group>
+
+            @error('childcare_act_guidance_read')
+                <flux:error>{{ $message }}</flux:error>
+            @enderror
+        </div>
+
+        <div x-show="$wire.childcare_act_guidance_read === 'no'">
+            <flux:textarea
+                wire:model="childcare_act_guidance_read_details"
+                :label="__('If you are unable to accept the above, please provide further details below')"
+                rows="4"
+            />
+
+            @error('childcare_act_guidance_read_details')
+                <flux:error>{{ $message }}</flux:error>
+            @enderror
+        </div>
+
+        <div class="flex flex-col gap-2">
+            <flux:radio.group
+                wire:model="childcare_act_no_disqualification_reasons"
+                variant="segmented"
+                :label="__('I acknowledge that none of the reasons listed in the DfE Guidance entitle me to a disqualification.')"
+            >
+                <flux:radio value="yes" label="{{ __('Yes') }}" />
+                <flux:radio value="no" label="{{ __('No') }}" />
+            </flux:radio.group>
+
+            @error('childcare_act_no_disqualification_reasons')
+                <flux:error>{{ $message }}</flux:error>
+            @enderror
+        </div>
+
+        <div x-show="$wire.childcare_act_no_disqualification_reasons === 'no'">
+            <flux:textarea
+                wire:model="childcare_act_no_disqualification_reasons_details"
+                :label="__('If you are unable to acknowledge the above statement, please provide further details below')"
+                rows="4"
+            />
+
+            @error('childcare_act_no_disqualification_reasons_details')
+                <flux:error>{{ $message }}</flux:error>
+            @enderror
+        </div>
+
+        <div class="flex flex-col gap-2">
+            <flux:radio.group
+                wire:model="childcare_act_will_notify_changes"
+                variant="segmented"
+                :label="__('I certify that if any of the aforementioned changes, I will tell :company right away.', ['company' => $this->employmentBusinessName])"
+            >
+                <flux:radio value="yes" label="{{ __('Yes') }}" />
+                <flux:radio value="no" label="{{ __('No') }}" />
+            </flux:radio.group>
+
+            @error('childcare_act_will_notify_changes')
+                <flux:error>{{ $message }}</flux:error>
+            @enderror
+        </div>
+
+        <div x-show="$wire.childcare_act_will_notify_changes === 'no'">
+            <flux:textarea
+                wire:model="childcare_act_will_notify_changes_details"
+                :label="__('If you are unable to confirm the above, please provide further details below')"
+                rows="4"
+            />
+
+            @error('childcare_act_will_notify_changes_details')
+                <flux:error>{{ $message }}</flux:error>
+            @enderror
+        </div>
+
+        <flux:button type="submit" variant="primary" class="w-full">
+            {{ __('Next') }}
+        </flux:button>
+    </form>
 @endif
