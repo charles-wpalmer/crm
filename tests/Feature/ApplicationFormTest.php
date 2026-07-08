@@ -2,6 +2,7 @@
 
 use App\Actions\Applications\ApplicationCompleted;
 use App\Ai\Agents\CvParser;
+use App\Enums\DocumentType;
 use App\Enums\ReferenceStatus;
 use App\Enums\ReferenceType;
 use App\Models\CandidateSkill;
@@ -60,12 +61,12 @@ test('mount aborts 403 for expired application', function () {
         ->assertStatus(403);
 });
 
-test('mount redirects to login and flashes a toast for a completed application', function () {
+test('mount redirects to candidate panel and flashes a toast for a completed application', function () {
     $application = makePendingApplication();
     $application->update(['status' => 'completed']);
 
     Livewire::test('application.application-form', ['token' => $application->token])
-        ->assertRedirect(route('login'));
+        ->assertRedirect(route('filament.candidate.home'));
 
     expect(session('toast'))->toBe(['text' => 'Application Completed', 'variant' => 'success']);
 });
@@ -80,7 +81,10 @@ test('parseCv requires a file when no CV has been uploaded yet', function () {
 
 test('parseCv advances to step 2 without re-uploading when a CV already exists', function () {
     $application = makePendingApplication();
-    $application->update(['cv_temp_path' => 'existing/cv.pdf']);
+    $application->educationCandidate->documents()->create([
+        'document_type' => DocumentType::Cv,
+        'path' => 'existing/cv.pdf',
+    ]);
 
     Livewire::test('application.application-form', ['token' => $application->token])
         ->call('parseCv')
@@ -89,11 +93,15 @@ test('parseCv advances to step 2 without re-uploading when a CV already exists',
 });
 
 test('form displays the existing CV filename when viewing step 1 after it has been uploaded', function () {
+    $candidate = EducationCandidate::factory()->create();
     $application = EducationApplication::factory()->create([
-        'education_candidate_id' => EducationCandidate::factory()->create()->id,
+        'education_candidate_id' => $candidate->id,
         'status' => 'pending',
         'current_step' => 2,
-        'cv_temp_path' => 'company/1/candidate/my-resume.pdf',
+    ]);
+    $candidate->documents()->create([
+        'document_type' => DocumentType::Cv,
+        'path' => 'company/1/candidate/my-resume.pdf',
     ]);
 
     ApplicationAccessSession::markVerified($application->token);
@@ -106,11 +114,15 @@ test('form displays the existing CV filename when viewing step 1 after it has be
 });
 
 test('form shows the analyse button once a new CV is staged to replace an existing one', function () {
+    $candidate = EducationCandidate::factory()->create();
     $application = EducationApplication::factory()->create([
-        'education_candidate_id' => EducationCandidate::factory()->create()->id,
+        'education_candidate_id' => $candidate->id,
         'status' => 'pending',
         'current_step' => 2,
-        'cv_temp_path' => 'company/1/candidate/my-resume.pdf',
+    ]);
+    $candidate->documents()->create([
+        'document_type' => DocumentType::Cv,
+        'path' => 'company/1/candidate/my-resume.pdf',
     ]);
 
     ApplicationAccessSession::markVerified($application->token);
@@ -172,9 +184,9 @@ test('parseCv populates fields and advances to step 2', function () {
         ->assertSet('employmentHistories.0.company_name', 'Oakwood Primary')
         ->assertSet('employmentHistories.0.job_title', 'Teacher');
 
-    $cvTempPath = $application->fresh()->cv_temp_path;
-    expect($cvTempPath)->not->toBeNull();
-    Storage::disk('local')->assertExists($cvTempPath);
+    $cvPath = $application->fresh()->educationCandidate->documents()->where('document_type', DocumentType::Cv)->value('path');
+    expect($cvPath)->not->toBeNull();
+    Storage::disk('local')->assertExists($cvPath);
 
     expect($application->fresh()->current_step)->toBe(2);
     expect($application->fresh()->cv_parsed_data)->not->toBeEmpty();
@@ -193,7 +205,8 @@ test('parseCv advances to step 2 with error message when parsing fails', functio
         ->assertSet('currentStep', 2)
         ->assertSet('parseError', 'CV parsing failed. Please fill in your details manually below.');
 
-    expect($application->fresh()->cv_temp_path)->not->toBeNull();
+    $cvPath = $application->fresh()->educationCandidate->documents()->where('document_type', DocumentType::Cv)->value('path');
+    expect($cvPath)->not->toBeNull();
     expect($application->fresh()->current_step)->toBe(2);
 });
 
@@ -824,12 +837,16 @@ test('savePhoto requires a photo when none exists yet', function () {
         ->assertHasErrors('photo')
         ->assertSet('currentStep', 6);
 
-    expect($application->fresh()->educationCandidate->photo_path)->toBeNull();
+    $photoPath = $application->fresh()->educationCandidate->documents()->where('document_type', DocumentType::Photo)->value('path');
+    expect($photoPath)->toBeNull();
 });
 
 test('savePhoto advances to step 7 without re-uploading when a photo already exists', function () {
     $application = makePendingApplication();
-    $application->educationCandidate->update(['photo_path' => 'existing/photo.jpg']);
+    $application->educationCandidate->documents()->create([
+        'document_type' => DocumentType::Photo,
+        'path' => 'existing/photo.jpg',
+    ]);
 
     Livewire::test('application.application-form', ['token' => $application->token])
         ->set('currentStep', 6)
@@ -840,7 +857,10 @@ test('savePhoto advances to step 7 without re-uploading when a photo already exi
 
 test('form displays the existing photo when the candidate already has one', function () {
     $application = makePendingApplication();
-    $application->educationCandidate->update(['photo_path' => 'existing/photo.jpg']);
+    $application->educationCandidate->documents()->create([
+        'document_type' => DocumentType::Photo,
+        'path' => 'existing/photo.jpg',
+    ]);
 
     Livewire::test('application.application-form', ['token' => $application->token])
         ->set('currentStep', 6)
@@ -872,7 +892,8 @@ test('savePhoto persists candidate photo and advances to step 7', function () {
         ->assertSet('currentStep', 7);
 
     $candidate = $application->educationCandidate()->first();
-    expect($candidate->photo_path)->not->toBeNull();
+    $photoPath = $candidate->documents()->where('document_type', DocumentType::Photo)->value('path');
+    expect($photoPath)->not->toBeNull();
 
     expect($application->fresh()->status)->toBe('pending');
     expect($application->fresh()->completed_at)->toBeNull();

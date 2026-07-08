@@ -28,9 +28,9 @@
             </flux:toast.group>
         @endpersist
 
-        @if (session('toast'))
+        @if ($toast = session()->pull('toast'))
             <script>
-                document.addEventListener('DOMContentLoaded', () => window.Flux.toast(@js(session('toast'))));
+                document.addEventListener('DOMContentLoaded', () => window.Flux.toast(@js($toast)));
             </script>
         @endif
 

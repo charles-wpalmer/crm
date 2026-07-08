@@ -2,6 +2,7 @@
 
 use App\Models\EducationApplication;
 use App\Services\ApplicationAccessSession;
+use Filament\Notifications\Notification;
 use Livewire\Attributes\Layout;
 use Livewire\Component;
 
@@ -27,8 +28,14 @@ new #[Layout('layouts.application')] class extends Component
         }
 
         if ($this->application->status === 'completed') {
-            session()->flash('toast', ['text' => __('Application Completed'), 'variant' => 'success']);
-            $this->redirect(route('login'));
+            session()->put('toast', ['text' => __('Application Completed'), 'variant' => 'success']);
+
+            Notification::make()
+                ->title(__('Application Completed'))
+                ->success()
+                ->send();
+
+            $this->redirect(route('filament.candidate.home'));
 
             return;
         }

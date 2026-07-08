@@ -9,11 +9,14 @@ use App\Models\Industry;
 use App\Models\User;
 use Database\Seeders\RoleSeeder;
 use Filament\Actions\Testing\TestAction;
+use Illuminate\Http\UploadedFile;
+use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Str;
 use Livewire\Livewire;
 
 beforeEach(function () {
     $this->seed(RoleSeeder::class);
+    Storage::fake('local');
 });
 
 function makeCandidateUser(string $statusName, array $candidateAttributes = []): User
@@ -148,20 +151,19 @@ test('no uk naric row appears by default', function () {
     expect($types)->not->toHaveKey('uk_naric');
 });
 
-test('the cv and photo rows reflect already-uploaded application data', function () {
-    $user = makeCandidateUser('Onboarding', ['photo_path' => 'existing/photo.jpg']);
-    $user->candidate->application()->create([
-        'email' => $user->candidate->email,
-        'status' => 'completed',
-        'token' => Str::random(32),
-        'expires_on' => now()->addDays(7),
-        'cv_temp_path' => 'existing/cv.pdf',
+test('rows reflect existing candidate_documents records', function () {
+    $user = makeCandidateUser('Onboarding');
+    $user->candidate->documents()->createMany([
+        ['document_type' => 'cv', 'path' => 'company/education/1/cv.pdf'],
+        ['document_type' => 'photo', 'path' => 'company/education/1/photo.jpg'],
     ]);
 
     $types = documentTypesFor($user);
 
     expect($types['cv']['uploaded'])->toBeTrue();
+    expect($types['cv']['path'])->toBe('company/education/1/cv.pdf');
     expect($types['photo']['uploaded'])->toBeTrue();
+    expect($types['photo']['path'])->toBe('company/education/1/photo.jpg');
 });
 
 test('the prevent training info action is only visible on the prevent training row', function () {
@@ -172,4 +174,92 @@ test('the prevent training info action is only visible on the prevent training r
     Livewire::test(Documents::class)
         ->assertActionVisible(TestAction::make('preventTrainingInfo')->table(record: 'prevent_training'))
         ->assertActionHidden(TestAction::make('preventTrainingInfo')->table(record: 'cv'));
+});
+
+test('uploading a document creates a candidate_documents record and stores the file', function () {
+    $user = makeCandidateUser('Onboarding');
+    $this->actingAs($user);
+
+    $file = UploadedFile::fake()->create('cv.pdf', 100, 'application/pdf');
+
+    Livewire::test(Documents::class)
+        ->callAction(
+            TestAction::make('upload')->table(record: 'cv'),
+            data: ['file' => $file],
+        )
+        ->assertHasNoActionErrors();
+
+    $document = $user->candidate->fresh()->documents()->where('document_type', 'cv')->first();
+
+    expect($document)->not->toBeNull();
+    Storage::disk('local')->assertExists($document->path);
+});
+
+test('updating a document replaces the stored file and record', function () {
+    $user = makeCandidateUser('Onboarding');
+    $this->actingAs($user);
+
+    $originalFile = UploadedFile::fake()->create('cv.pdf', 100, 'application/pdf');
+
+    Livewire::test(Documents::class)
+        ->callAction(TestAction::make('upload')->table(record: 'cv'), data: ['file' => $originalFile]);
+
+    $originalDocument = $user->candidate->fresh()->documents()->where('document_type', 'cv')->first();
+    $originalPath = $originalDocument->path;
+
+    $newFile = UploadedFile::fake()->create('cv-updated.pdf', 100, 'application/pdf');
+
+    Livewire::test(Documents::class)
+        ->callAction(
+            TestAction::make('update')->table(record: 'cv'),
+            data: ['file' => $newFile],
+        )
+        ->assertHasNoActionErrors();
+
+    $candidate = $user->candidate->fresh();
+    expect($candidate->documents()->where('document_type', 'cv')->count())->toBe(1);
+
+    $updatedDocument = $candidate->documents()->where('document_type', 'cv')->first();
+    expect($updatedDocument->id)->toBe($originalDocument->id);
+    expect($updatedDocument->path)->not->toBe($originalPath);
+
+    Storage::disk('local')->assertMissing($originalPath);
+    Storage::disk('local')->assertExists($updatedDocument->path);
+});
+
+test('removing a document deletes the stored file and record', function () {
+    $user = makeCandidateUser('Onboarding');
+    $this->actingAs($user);
+
+    $file = UploadedFile::fake()->create('cv.pdf', 100, 'application/pdf');
+
+    Livewire::test(Documents::class)
+        ->callAction(TestAction::make('upload')->table(record: 'cv'), data: ['file' => $file]);
+
+    $document = $user->candidate->fresh()->documents()->where('document_type', 'cv')->first();
+    $path = $document->path;
+
+    Livewire::test(Documents::class)
+        ->callAction(TestAction::make('remove')->table(record: 'cv'));
+
+    expect($user->candidate->fresh()->documents()->where('document_type', 'cv')->exists())->toBeFalse();
+    Storage::disk('local')->assertMissing($path);
+});
+
+test('uploaded documents are stored under the company and industry name, not their ids', function () {
+    $user = makeCandidateUser('Onboarding');
+    $this->actingAs($user);
+
+    $file = UploadedFile::fake()->create('cv.pdf', 100, 'application/pdf');
+
+    Livewire::test(Documents::class)
+        ->callAction(TestAction::make('upload')->table(record: 'cv'), data: ['file' => $file]);
+
+    $candidate = $user->candidate->fresh();
+    $document = $candidate->documents()->where('document_type', 'cv')->first();
+
+    $expectedCompanySlug = Str::slug($candidate->company->name);
+    $expectedIndustrySlug = Str::slug(Industry::where('slug', 'education')->value('name'));
+
+    expect($document->path)->toStartWith("{$expectedCompanySlug}/{$expectedIndustrySlug}/{$candidate->id}/");
 });
