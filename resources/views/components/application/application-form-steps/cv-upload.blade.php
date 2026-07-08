@@ -7,22 +7,22 @@
 
     <form wire:submit="parseCv" class="mt-6 flex flex-col gap-6">
 
-        @if ($application->cv_temp_path && ! $cv)
+        @if ($this->existingCvPath && ! $cv)
             <div class="flex items-center gap-3 rounded-lg border border-zinc-200 bg-zinc-50 px-4 py-3 dark:border-white/10 dark:bg-white/5">
                 <svg class="size-6 shrink-0 text-emerald-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M9 12.75 11.25 15 15 9.75M21 12a9 9 0 1 1-18 0 9 9 0 0 1 18 0Z" />
                 </svg>
                 <div class="min-w-0 flex-1">
                     <p class="text-sm font-medium text-zinc-800 dark:text-zinc-200">{{ __('CV uploaded') }}</p>
-                    <p class="truncate text-xs text-zinc-500">{{ basename($application->cv_temp_path) }}</p>
+                    <p class="truncate text-xs text-zinc-500">{{ basename($this->existingCvPath) }}</p>
                 </div>
             </div>
         @endif
 
         <div class="flex flex-col gap-2">
             <label for="cv" class="block text-sm font-medium text-zinc-700 dark:text-zinc-300">
-                {{ $application->cv_temp_path ? __('Replace CV / Resume') : __('CV / Resume') }}
-                @unless ($application->cv_temp_path)
+                {{ $this->existingCvPath ? __('Replace CV / Resume') : __('CV / Resume') }}
+                @unless ($this->existingCvPath)
                     <span class="text-red-500">*</span>
                 @endunless
             </label>
@@ -59,7 +59,7 @@
             <span wire:loading.remove wire:target="parseCv">
                 @if ($cv)
                     {{ __('Analyse CV') }}
-                @elseif ($application->cv_temp_path)
+                @elseif ($this->existingCvPath)
                     {{ __('Next') }}
                 @else
                     {{ __('Analyse CV') }}

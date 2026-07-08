@@ -1,6 +1,7 @@
 <?php
 
 use App\Actions\Applications\ApplicationCompleted;
+use App\Enums\DocumentType;
 use App\Enums\Education\Availability;
 use App\Enums\Education\KeyStage;
 use App\Enums\ReferenceType;
@@ -13,6 +14,7 @@ use App\Models\User;
 use App\Services\ApplicationAccessSession;
 use App\Services\CvParserService;
 use App\Services\Document;
+use Filament\Notifications\Notification;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\Auth;
@@ -204,8 +206,14 @@ new #[Layout('layouts.application')] class extends Component
         }
 
         if ($this->application->status === 'completed') {
-            session()->flash('toast', ['text' => __('Application Completed'), 'variant' => 'success']);
-            $this->redirect(route('login'));
+            session()->put('toast', ['text' => __('Application Completed'), 'variant' => 'success']);
+
+            Notification::make()
+                ->title(__('Application Completed'))
+                ->success()
+                ->send();
+
+            $this->redirect(route('filament.candidate.home'));
 
             return;
         }
@@ -273,7 +281,7 @@ new #[Layout('layouts.application')] class extends Component
         $this->parseError = null;
 
         if (! $this->cv) {
-            if (! $this->application->cv_temp_path) {
+            if (! $this->existingCvPath) {
                 $this->addError('cv', 'Please upload your CV.');
 
                 return;
@@ -288,8 +296,11 @@ new #[Layout('layouts.application')] class extends Component
             'cv' => ['file', 'mimes:pdf', 'max:10240'],
         ]);
 
-        $documentPath = Document::upload($this->cv, $this->application);
-        $this->application->update(['cv_temp_path' => $documentPath]);
+        $documentPath = Document::upload($this->cv, $this->application->educationCandidate, 'cv');
+        $this->application->educationCandidate->documents()->updateOrCreate(
+            ['document_type' => DocumentType::Cv],
+            ['path' => $documentPath],
+        );
 
         $localPath = 'cv-uploads/'.$this->application->id.'.pdf';
         Storage::disk('local')->put($localPath, Storage::readStream($documentPath));
@@ -553,7 +564,7 @@ new #[Layout('layouts.application')] class extends Component
 
     public function savePhoto(): void
     {
-        if (! $this->photo && ! $this->application->educationCandidate->photo_path) {
+        if (! $this->photo && ! $this->existingPhotoUrl) {
             $this->addError('photo', 'Please add a photo before continuing.');
 
             return;
@@ -564,11 +575,12 @@ new #[Layout('layouts.application')] class extends Component
                 'photo' => ['image', 'max:5120'],
             ]);
 
-            $photoPath = Document::upload($this->photo, $this->application);
+            $photoPath = Document::upload($this->photo, $this->application->educationCandidate, 'photo');
 
-            $this->application->educationCandidate->update([
-                'photo_path' => $photoPath,
-            ]);
+            $this->application->educationCandidate->documents()->updateOrCreate(
+                ['document_type' => DocumentType::Photo],
+                ['path' => $photoPath],
+            );
         }
 
         $this->goToStep(7);
@@ -1145,13 +1157,23 @@ new #[Layout('layouts.application')] class extends Component
     #[Computed]
     public function existingPhotoUrl(): ?string
     {
-        $photoPath = $this->application->educationCandidate->photo_path;
+        $photoPath = $this->application->educationCandidate->documents()
+            ->where('document_type', DocumentType::Photo)
+            ->value('path');
 
         if (! $photoPath) {
             return null;
         }
 
         return Storage::disk('local')->temporaryUrl($photoPath, now()->addMinutes(30));
+    }
+
+    #[Computed]
+    public function existingCvPath(): ?string
+    {
+        return $this->application->educationCandidate->documents()
+            ->where('document_type', DocumentType::Cv)
+            ->value('path');
     }
 
     #[Computed]

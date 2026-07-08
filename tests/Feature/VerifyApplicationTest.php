@@ -29,11 +29,11 @@ test('mount aborts 403 for an expired application', function () {
         ->assertStatus(403);
 });
 
-test('mount redirects to login and flashes a toast for a completed application', function () {
+test('mount redirects to candidate panel and flashes a toast for a completed application', function () {
     $application = makeUnverifiedApplication(['status' => 'completed']);
 
     Livewire::test('application.verify-application', ['token' => $application->token])
-        ->assertRedirect(route('login'));
+        ->assertRedirect(route('filament.candidate.home'));
 
     expect(session('toast'))->toBe(['text' => 'Application Completed', 'variant' => 'success']);
 });

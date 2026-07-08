@@ -3,13 +3,18 @@
 namespace App\Filament\Candidate\Pages;
 
 use App\Models\EducationCandidate;
+use App\Services\Document;
 use Filament\Actions\Action;
+use Filament\Forms\Components\FileUpload;
+use Filament\Notifications\Notification;
 use Filament\Pages\Page;
 use Filament\Support\Icons\Heroicon;
 use Filament\Tables\Columns\TextColumn;
 use Filament\Tables\Concerns\InteractsWithTable;
 use Filament\Tables\Contracts\HasTable;
 use Filament\Tables\Table;
+use Illuminate\Http\UploadedFile;
+use Illuminate\Support\Facades\Storage;
 
 class Documents extends Page implements HasTable
 {
@@ -23,76 +28,79 @@ class Documents extends Page implements HasTable
 
     protected static ?string $title = 'Documents';
 
-    /** @return array<string, array{label: string, description: string, uploaded: bool}> */
+    /** @return array<string, array{document_type: string, label: string, description: string, uploaded: bool, path: ?string}> */
     public function documentTypes(): array
     {
         $candidate = $this->candidate();
+        $existing = $candidate->documents()->get()->keyBy(fn ($document) => $document->document_type->value);
 
-        $types = [
+        $definitions = [
             'cv' => [
                 'label' => 'CV',
                 'description' => 'Your most recent CV.',
-                'uploaded' => (bool) $candidate->application?->cv_temp_path,
             ],
             'photo' => [
                 'label' => 'Photo',
                 'description' => 'A clear, recent photo of yourself.',
-                'uploaded' => (bool) $candidate->photo_path,
             ],
             'prevent_training' => [
                 'label' => 'Prevent Training',
                 'description' => 'Certificate confirming completion of Prevent duty training.',
-                'uploaded' => false,
             ],
             'safeguarding_training' => [
                 'label' => 'Safeguarding Training',
                 'description' => 'Certificate confirming completion of safeguarding training.',
-                'uploaded' => false,
             ],
             'proof_of_address' => [
                 'label' => 'Proof of Address',
                 'description' => 'A recent utility bill or bank statement.',
-                'uploaded' => false,
             ],
         ];
 
         match ($candidate->right_to_work_type) {
-            'birth_certificate' => $types['birth_certificate'] = [
+            'birth_certificate' => $definitions['birth_certificate'] = [
                 'label' => 'Birth Certificate',
                 'description' => 'Your birth certificate, as proof of your right to work.',
-                'uploaded' => false,
             ],
-            'passport' => $types['passport'] = [
+            'passport' => $definitions['passport'] = [
                 'label' => 'Passport',
                 'description' => 'Your passport, as proof of your right to work.',
-                'uploaded' => false,
             ],
             default => null,
         };
 
         if ($candidate->has_dbs === 'yes') {
-            $types['dbs'] = [
+            $definitions['dbs'] = [
                 'label' => 'DBS',
                 'description' => 'Your DBS certificate or update service check.',
-                'uploaded' => false,
             ];
         } elseif ($candidate->has_dbs === 'no') {
-            $types['proof_of_address_2'] = [
+            $definitions['proof_of_address_2'] = [
                 'label' => 'Proof of Address 2',
                 'description' => 'A second, different proof of address, since you do not currently have a DBS.',
-                'uploaded' => false,
             ];
         }
 
         if ($candidate->has_naric === 'yes') {
-            $types['uk_naric'] = [
+            $definitions['uk_naric'] = [
                 'label' => 'UK NARIC',
                 'description' => 'Your UK NARIC statement of comparability.',
-                'uploaded' => false,
             ];
         }
 
-        return $types;
+        return collect($definitions)
+            ->map(function (array $definition, string $key) use ($existing): array {
+                $document = $existing->get($key);
+
+                return [
+                    'document_type' => $key,
+                    'label' => $definition['label'],
+                    'description' => $definition['description'],
+                    'uploaded' => $document !== null,
+                    'path' => $document?->path,
+                ];
+            })
+            ->all();
     }
 
     public function table(Table $table): Table
@@ -121,22 +129,16 @@ class Documents extends Page implements HasTable
                     ->icon('heroicon-o-information-circle')
                     ->color('gray')
                     ->tooltip('More information')
-                    ->visible(fn (array $record): bool => $record['label'] === 'Prevent Training')
+                    ->visible(fn (array $record): bool => $record['document_type'] === 'prevent_training')
                     ->modalHeading('Prevent Training')
                     ->modalContent(view('filament.candidate.pages.documents.prevent-training-info'))
                     ->modalSubmitAction(false)
                     ->modalCancelActionLabel('Close'),
 
-                Action::make('upload')
-                    ->label('Upload')
-                    ->icon('heroicon-o-arrow-up-tray')
-                    ->color('primary')
+                $this->uploadAction('upload', 'Upload', 'heroicon-o-arrow-up-tray')
                     ->visible(fn (array $record): bool => ! $record['uploaded']),
 
-                Action::make('update')
-                    ->label('Update')
-                    ->icon('heroicon-o-arrow-path')
-                    ->color('primary')
+                $this->uploadAction('update', 'Update', 'heroicon-o-arrow-path')
                     ->visible(fn (array $record): bool => $record['uploaded']),
 
                 Action::make('remove')
@@ -144,8 +146,70 @@ class Documents extends Page implements HasTable
                     ->icon('heroicon-o-trash')
                     ->color('danger')
                     ->requiresConfirmation()
-                    ->visible(fn (array $record): bool => $record['uploaded']),
+                    ->modalHeading('Remove document')
+                    ->modalDescription('Are you sure you want to remove this document? You will need to upload it again.')
+                    ->visible(fn (array $record): bool => $record['uploaded'])
+                    ->action(fn (array $record) => $this->removeDocument($record['document_type'])),
             ]);
+    }
+
+    private function uploadAction(string $name, string $label, string $icon): Action
+    {
+        return Action::make($name)
+            ->label($label)
+            ->icon($icon)
+            ->color('primary')
+            ->modalHeading(fn (array $record): string => "{$label} {$record['label']}")
+            ->schema([
+                FileUpload::make('file')
+                    ->label('File')
+                    ->storeFiles(false)
+                    ->acceptedFileTypes(['application/pdf', 'image/jpeg', 'image/png'])
+                    ->maxSize(10240)
+                    ->required(),
+            ])
+            ->action(fn (array $data, array $record) => $this->uploadDocument($record['document_type'], $data['file']));
+    }
+
+    private function uploadDocument(string $documentType, UploadedFile $file): void
+    {
+        $candidate = $this->candidate();
+
+        $path = Document::upload($file, $candidate, $documentType);
+
+        $existing = $candidate->documents()->where('document_type', $documentType)->first();
+
+        if ($existing) {
+            Storage::disk('local')->delete($existing->path);
+            $existing->update(['path' => $path]);
+        } else {
+            $candidate->documents()->create([
+                'document_type' => $documentType,
+                'path' => $path,
+            ]);
+        }
+
+        Notification::make()
+            ->success()
+            ->title('Document uploaded')
+            ->send();
+    }
+
+    private function removeDocument(string $documentType): void
+    {
+        $candidate = $this->candidate();
+
+        $document = $candidate->documents()->where('document_type', $documentType)->first();
+
+        if ($document) {
+            Storage::disk('local')->delete($document->path);
+            $document->delete();
+        }
+
+        Notification::make()
+            ->success()
+            ->title('Document removed')
+            ->send();
     }
 
     private function candidate(): EducationCandidate

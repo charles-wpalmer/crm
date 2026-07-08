@@ -21,7 +21,6 @@ class EducationApplication extends Model
         'token',
         'expires_on',
         'completed_at',
-        'cv_temp_path',
         'cv_parsed_data',
         'terms_of_engagement_accepted_at',
         'terms_accepted_at',
