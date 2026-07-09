@@ -180,7 +180,7 @@ test('parseCv populates fields and advances to step 2', function () {
         ->assertSet('first_name', 'Jane')
         ->assertSet('last_name', 'Doe')
         ->assertSet('city', 'London')
-        ->assertSet('date_of_birth', 'May 15, 1990')
+        ->assertSet('date_of_birth', '1990-05-15')
         ->assertSet('employmentHistories.0.company_name', 'Oakwood Primary')
         ->assertSet('employmentHistories.0.job_title', 'Teacher');
 
@@ -277,7 +277,7 @@ test('mount hydrates step 2 fields already saved on the candidate, preferring th
         ->assertSet('currentStep', 2)
         ->assertSet('first_name', 'Priya')
         ->assertSet('last_name', 'Shah')
-        ->assertSet('date_of_birth', 'Mar 2, 1985')
+        ->assertSet('date_of_birth', '1985-03-02')
         ->assertSet('city', 'Leeds')
         ->assertSet('mobile', '07700900123');
 });
@@ -1406,6 +1406,29 @@ test('saveDocumentRequirements requires a visa share code when right to work is 
         ->assertHasErrors(['visa_share_code']);
 });
 
+test('saveDocumentRequirements requires a dbs certificate number when has_dbs is yes', function () {
+    $application = makePendingApplication();
+
+    Livewire::test('application.application-form', ['token' => $application->token])
+        ->set('currentStep', 10)
+        ->set('right_to_work_type', 'passport')
+        ->set('has_dbs', 'yes')
+        ->call('saveDocumentRequirements')
+        ->assertHasErrors(['dbs_certificate_number']);
+});
+
+test('saveDocumentRequirements rejects a non-numeric dbs certificate number', function () {
+    $application = makePendingApplication();
+
+    Livewire::test('application.application-form', ['token' => $application->token])
+        ->set('currentStep', 10)
+        ->set('right_to_work_type', 'passport')
+        ->set('has_dbs', 'yes')
+        ->set('dbs_certificate_number', 'ABC123')
+        ->call('saveDocumentRequirements')
+        ->assertHasErrors(['dbs_certificate_number']);
+});
+
 test('saveDocumentRequirements persists answers and advances to the set password step', function () {
     $application = makePendingApplication();
     $candidate = $application->educationCandidate;
@@ -1424,7 +1447,24 @@ test('saveDocumentRequirements persists answers and advances to the set password
     expect($candidate->right_to_work_type)->toBe('visa');
     expect($candidate->visa_share_code)->toBe('ABC123XYZ');
     expect($candidate->has_dbs)->toBe('no');
+    expect($candidate->dbs_certificate_number)->toBeNull();
     expect($candidate->has_naric)->toBe('yes');
+});
+
+test('saveDocumentRequirements persists the dbs certificate number when has_dbs is yes', function () {
+    $application = makePendingApplication();
+    $candidate = $application->educationCandidate;
+
+    Livewire::test('application.application-form', ['token' => $application->token])
+        ->set('currentStep', 10)
+        ->set('right_to_work_type', 'passport')
+        ->set('has_dbs', 'yes')
+        ->set('dbs_certificate_number', '001234567890')
+        ->call('saveDocumentRequirements')
+        ->assertHasNoErrors()
+        ->assertSet('currentStep', 11);
+
+    expect($candidate->refresh()->dbs_certificate_number)->toBe('001234567890');
 });
 
 test('saveDocumentRequirements clears the visa share code when right to work is not visa', function () {
@@ -1435,6 +1475,7 @@ test('saveDocumentRequirements clears the visa share code when right to work is 
         ->set('currentStep', 10)
         ->set('right_to_work_type', 'passport')
         ->set('has_dbs', 'yes')
+        ->set('dbs_certificate_number', '001234567890')
         ->call('saveDocumentRequirements')
         ->assertHasNoErrors();
 

@@ -188,6 +188,8 @@ new #[Layout('layouts.application')] class extends Component
 
     public ?string $has_dbs = null;
 
+    public string $dbs_certificate_number = '';
+
     public ?string $has_naric = null;
 
     // Account
@@ -311,7 +313,7 @@ new #[Layout('layouts.application')] class extends Component
             $this->first_name = $extracted->firstName ?? '';
             $this->middle_name = $extracted->middleName ?? '';
             $this->last_name = $extracted->lastName ?? '';
-            $this->date_of_birth = $this->formatDateForDisplay($extracted->dateOfBirth);
+            $this->date_of_birth = $this->formatDateOfBirthForInput($extracted->dateOfBirth);
             $this->address = $extracted->address ?? '';
             $this->city = $extracted->city ?? '';
             $this->county = $extracted->county ?? '';
@@ -813,6 +815,7 @@ new #[Layout('layouts.application')] class extends Component
             'right_to_work_type' => ['required', 'in:birth_certificate,passport,visa'],
             'visa_share_code' => ['required_if:right_to_work_type,visa', 'nullable', 'string', 'max:255'],
             'has_dbs' => ['required', 'in:yes,no'],
+            'dbs_certificate_number' => ['required_if:has_dbs,yes', 'nullable', 'string', 'regex:/^\d+$/', 'max:20'],
             'has_naric' => ['nullable', 'in:yes,no'],
         ]);
 
@@ -820,6 +823,7 @@ new #[Layout('layouts.application')] class extends Component
             'right_to_work_type' => $this->right_to_work_type,
             'visa_share_code' => $this->right_to_work_type === 'visa' ? $this->visa_share_code : null,
             'has_dbs' => $this->has_dbs,
+            'dbs_certificate_number' => $this->has_dbs === 'yes' ? $this->dbs_certificate_number : null,
             'has_naric' => $this->has_naric,
         ]);
 
@@ -1209,7 +1213,7 @@ new #[Layout('layouts.application')] class extends Component
         $this->previous_surname = $candidate->previous_surname ?? '';
         $this->gender = $candidate->gender ?? '';
         $this->nationality = $candidate->nationality;
-        $this->date_of_birth = $candidate->date_of_birth?->format(self::DATE_DISPLAY_FORMAT);
+        $this->date_of_birth = $candidate->date_of_birth?->format('Y-m-d');
         $this->address = $candidate->address ?? '';
         $this->city = $candidate->city ?? '';
         $this->county = $candidate->county ?? '';
@@ -1236,6 +1240,7 @@ new #[Layout('layouts.application')] class extends Component
         $this->right_to_work_type = $candidate->right_to_work_type;
         $this->visa_share_code = $candidate->visa_share_code ?? '';
         $this->has_dbs = $candidate->has_dbs;
+        $this->dbs_certificate_number = $candidate->dbs_certificate_number ?? '';
         $this->has_naric = $candidate->has_naric;
 
         $this->qualification_id = $candidate->qualification_id;
@@ -1285,7 +1290,7 @@ new #[Layout('layouts.application')] class extends Component
             'first_name' => $data['firstName'] ?? '',
             'middle_name' => $data['middleName'] ?? '',
             'last_name' => $data['lastName'] ?? '',
-            'date_of_birth' => $this->formatDateForDisplay($data['dateOfBirth'] ?? null),
+            'date_of_birth' => $this->formatDateOfBirthForInput($data['dateOfBirth'] ?? null),
             'address' => $data['address'] ?? '',
             'city' => $data['city'] ?? '',
             'county' => $data['county'] ?? '',
@@ -1314,6 +1319,19 @@ new #[Layout('layouts.application')] class extends Component
 
         try {
             return Carbon::parse($date)->format(self::DATE_DISPLAY_FORMAT);
+        } catch (Throwable) {
+            return null;
+        }
+    }
+
+    private function formatDateOfBirthForInput(?string $date): ?string
+    {
+        if (! $date) {
+            return null;
+        }
+
+        try {
+            return Carbon::parse($date)->format('Y-m-d');
         } catch (Throwable) {
             return null;
         }
