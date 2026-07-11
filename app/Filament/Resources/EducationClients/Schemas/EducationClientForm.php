@@ -3,6 +3,7 @@
 namespace App\Filament\Resources\EducationClients\Schemas;
 
 use App\Enums\Education\KeyStage;
+use App\Filament\Widgets\ClientActivityTimeline;
 use App\Models\EducationClient;
 use App\Models\JobTitle;
 use Filament\Actions\Action;
@@ -14,6 +15,7 @@ use Filament\Forms\Components\Textarea;
 use Filament\Forms\Components\TextInput;
 use Filament\Forms\Components\Toggle;
 use Filament\Schemas\Components\Actions;
+use Filament\Schemas\Components\Livewire as LivewireComponent;
 use Filament\Schemas\Components\Section;
 use Filament\Schemas\Components\Tabs;
 use Filament\Schemas\Components\Tabs\Tab;
@@ -21,6 +23,7 @@ use Filament\Schemas\Components\Text;
 use Filament\Schemas\Components\Utilities\Get;
 use Filament\Schemas\Components\Utilities\Set;
 use Filament\Schemas\Schema;
+use Illuminate\Database\Eloquent\Model;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Http;
 
@@ -33,6 +36,13 @@ class EducationClientForm
             ->components([
                 Tabs::make('Tabs')
                     ->tabs([
+                        Tab::make('Activity')
+                            ->schema([
+                                LivewireComponent::make(ClientActivityTimeline::class)
+                                    ->key('client-activity-timeline')
+                                    ->hidden(fn (?Model $record): bool => $record === null),
+                            ]),
+
                         Tab::make('Details')
                             ->schema([
                                 Section::make('Client Name & Address')
