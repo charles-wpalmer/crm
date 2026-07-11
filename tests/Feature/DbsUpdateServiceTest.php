@@ -10,7 +10,7 @@ use App\Models\User;
 use App\Services\DbsUpdateService;
 use Illuminate\Support\Facades\Http;
 
-test('check stores the status returned by the update service on the candidate', function () {
+test('check stores the status and checked-at timestamp returned by the update service on the candidate', function () {
     $user = User::factory()->create(['name' => 'Jane Smith']);
     $this->actingAs($user);
 
@@ -40,6 +40,7 @@ test('check stores the status returned by the update service on the candidate', 
 
     expect($status)->toBe('BLANK_NO_NEW_INFO');
     expect($candidate->refresh()->update_service_response)->toBe('BLANK_NO_NEW_INFO');
+    expect($candidate->update_service_checked_at)->not->toBeNull();
 
     Http::assertSent(function ($request) {
         return str($request->url())->contains('secure.crbonline.gov.uk/crsc/api/status/001234567890')

@@ -55,7 +55,10 @@ class DbsUpdateService
 
         $status = (string) ($result->status ?? '');
 
-        $candidate->update(['update_service_response' => $status]);
+        $candidate->update([
+            'update_service_response' => $status,
+            'update_service_checked_at' => now(),
+        ]);
 
         return $status;
     }

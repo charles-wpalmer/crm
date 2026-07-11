@@ -42,6 +42,7 @@ class EducationCandidate extends Model
         'dbs_checked_date' => 'date',
         'proof_of_address_checked_at' => 'datetime',
         'ni_number_checked_at' => 'datetime',
+        'update_service_checked_at' => 'datetime',
     ];
 
     /** @return array<int, string> */

@@ -493,10 +493,17 @@ class VettingSteps
                                 }),
                         ])->columnSpanFull(),
 
-                        Text::make(fn (?EducationCandidate $record): string => $record?->update_service_response
-                            ? "Last result: {$record->update_service_response}"
-                            : 'Not yet checked.'
-                        )
+                        Text::make(function (?EducationCandidate $record): string {
+                            if (! $record?->update_service_response) {
+                                return 'Not yet checked.';
+                            }
+
+                            $checkedAt = $record->update_service_checked_at?->format('d/m/Y');
+
+                            return $checkedAt
+                                ? "Last result: {$record->update_service_response} (checked {$checkedAt})"
+                                : "Last result: {$record->update_service_response}";
+                        })
                             ->color(fn (?EducationCandidate $record): string => filled($record?->update_service_response) ? 'success' : 'gray')
                             ->columnSpanFull(),
                     ])
