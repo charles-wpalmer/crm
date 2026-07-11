@@ -1,5 +1,6 @@
 <?php
 
+use App\Exceptions\Dbs\MissingCandidateDetailsException;
 use App\Exceptions\Dbs\MissingCertificateNumberException;
 use App\Exceptions\Dbs\MissingCompanyLegalNameException;
 use App\Exceptions\Dbs\UpdateServiceCheckRejectedException;
@@ -9,7 +10,7 @@ use App\Models\User;
 use App\Services\DbsUpdateService;
 use Illuminate\Support\Facades\Http;
 
-test('check stores the status returned by the update service on the candidate', function () {
+test('check stores the status and checked-at timestamp returned by the update service on the candidate', function () {
     $user = User::factory()->create(['name' => 'Jane Smith']);
     $this->actingAs($user);
 
@@ -17,6 +18,7 @@ test('check stores the status returned by the update service on the candidate', 
 
     $candidate = EducationCandidate::factory()->create([
         'company_id' => $company->id,
+        'first_name' => 'Billy',
         'last_name' => 'Jones',
         'date_of_birth' => '1990-05-15',
         'dbs_certificate_number' => '001234567890',
@@ -38,6 +40,7 @@ test('check stores the status returned by the update service on the candidate', 
 
     expect($status)->toBe('BLANK_NO_NEW_INFO');
     expect($candidate->refresh()->update_service_response)->toBe('BLANK_NO_NEW_INFO');
+    expect($candidate->update_service_checked_at)->not->toBeNull();
 
     Http::assertSent(function ($request) {
         return str($request->url())->contains('secure.crbonline.gov.uk/crsc/api/status/001234567890')
@@ -45,9 +48,28 @@ test('check stores the status returned by the update service on the candidate', 
             && $request['surname'] === 'Jones'
             && $request['hasAgreedTermsAndConditions'] === 'true'
             && $request['organisationName'] === 'Applebough Ltd'
-            && $request['employeeForename'] === 'Jane'
-            && $request['employeeSurname'] === 'Smith';
+            && $request['employeeForename'] === 'Billy'
+            && $request['employeeSurname'] === 'Jones';
     });
+});
+
+test('check throws when the candidate has no first name', function () {
+    $candidate = EducationCandidate::factory()->create([
+        'first_name' => null,
+        'last_name' => 'Jones',
+        'date_of_birth' => '1990-05-15',
+        'dbs_certificate_number' => '001234567890',
+    ]);
+
+    try {
+        (new DbsUpdateService)->check($candidate);
+    } catch (MissingCandidateDetailsException $exception) {
+        expect($exception->getMessage())->toBe('Candidate is missing details required for a DBS Update Service check.');
+
+        return;
+    }
+
+    $this->fail('Expected MissingCandidateDetailsException to be thrown.');
 });
 
 test('check throws when the candidate has no dbs certificate number', function () {
