@@ -9,7 +9,7 @@ use App\Enums\Nationality;
 use App\Enums\ReferenceStatus;
 use App\Enums\ReferenceType;
 use App\Exceptions\Dbs\DbsUpdateServiceException;
-use App\Filament\Resources\Vetting\VettingResource;
+use App\Filament\Resources\EducationVetting\VettingResource;
 use App\Filament\Widgets\CandidateActivityTimeline;
 use App\Models\CandidateDocument;
 use App\Models\CandidateSkill;
@@ -17,7 +17,7 @@ use App\Models\EducationCandidate;
 use App\Models\JobTitle;
 use App\Models\Qualification;
 use App\Models\User;
-use App\Services\DbsUpdateService;
+use App\Services\Education\DbsUpdateService;
 use Filament\Actions\Action;
 use Filament\Forms\Components\Checkbox;
 use Filament\Forms\Components\CheckboxList;
@@ -505,7 +505,7 @@ class EducationCandidateForm
                                         TextInput::make('country')
                                             ->maxLength(255),
                                         Checkbox::make('consent_to_contact')
-                                            ->label('Candidate consents to us contacting this referee')
+                                            ->label('EducationCandidate consents to us contacting this referee')
                                             ->columnSpanFull(),
                                         Checkbox::make('contact_now')
                                             ->label('Contact this referee now')

@@ -3,8 +3,8 @@
 namespace App\Filament\Candidate\Pages;
 
 use App\Models\EducationCandidate;
-use App\Services\CandidateDocumentRequirements;
-use App\Services\Document;
+use App\Services\Education\CandidateDocumentRequirements;
+use App\Services\Education\Document;
 use Filament\Actions\Action;
 use Filament\Forms\Components\FileUpload;
 use Filament\Notifications\Notification;

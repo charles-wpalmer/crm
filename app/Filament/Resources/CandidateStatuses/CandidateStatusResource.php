@@ -24,15 +24,15 @@ class CandidateStatusResource extends Resource
 
     protected static ?string $recordTitleAttribute = 'name';
 
-    protected static ?string $navigationLabel = 'Candidate Statuses';
+    protected static ?string $navigationLabel = 'EducationCandidate Statuses';
 
     protected static string|\UnitEnum|null $navigationGroup = 'Admin';
 
     protected static bool $shouldRegisterNavigation = false;
 
-    protected static ?string $pluralModelLabel = 'Candidate Statuses';
+    protected static ?string $pluralModelLabel = 'EducationCandidate Statuses';
 
-    protected static ?string $modelLabel = 'Candidate Status';
+    protected static ?string $modelLabel = 'EducationCandidate Status';
 
     public static function canViewAny(): bool
     {

@@ -6,7 +6,6 @@ use App\Models\EducationBooking;
 use Filament\Tables\Columns\TextColumn;
 use Filament\Tables\Table;
 use Filament\Widgets\TableWidget;
-use Illuminate\Database\Eloquent\Builder;
 
 class RecentEducationBookings extends TableWidget
 {
@@ -24,7 +23,7 @@ class RecentEducationBookings extends TableWidget
                 TextColumn::make('client.name')
                     ->label('Client'),
                 TextColumn::make('candidate.name')
-                    ->label('Candidate'),
+                    ->label('EducationCandidate'),
                 TextColumn::make('start_date')
                     ->date()
                     ->sortable(),

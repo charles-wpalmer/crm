@@ -1,6 +1,6 @@
 <?php
 
-namespace App\Services;
+namespace App\Services\Ai;
 
 use App\Ai\Agents\ProofOfNiParser;
 use App\DTOs\ProofOfNiExtraction;
@@ -25,7 +25,7 @@ class NiNumberVerificationService
         $document = $candidate->documents()->where('document_type', DocumentType::ProofOfNi)->first();
 
         if (! $document) {
-            throw new RuntimeException('Candidate has no proof of NI document to verify.');
+            throw new RuntimeException('EducationCandidate has no proof of NI document to verify.');
         }
 
         $extraction = $this->parse(Storage::disk('local')->path($document->path));

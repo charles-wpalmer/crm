@@ -1,6 +1,6 @@
 <?php
 
-namespace App\Services;
+namespace App\Services\Education;
 
 use App\Enums\DocumentType;
 use App\Models\EducationCandidate;
@@ -13,7 +13,7 @@ class CandidateVettingRequirements
         return [
             'dbs' => [
                 'label' => 'DBS',
-                'description' => 'Candidate has a DBS on file with a certificate number, verified either via a valid Update Service response or by both the front and back of the certificate being uploaded.',
+                'description' => 'EducationCandidate has a DBS on file with a certificate number, verified either via a valid Update Service response or by both the front and back of the certificate being uploaded.',
                 'complete' => filled($candidate->dbs_certificate_number)
                     && (
                         $candidate->update_service_response === DbsUpdateService::VALID_STATUS
@@ -45,12 +45,12 @@ class CandidateVettingRequirements
             ],
             'not_barred' => [
                 'label' => 'Not Barred',
-                'description' => 'Candidate has been checked against the barred list and cleared.',
+                'description' => 'EducationCandidate has been checked against the barred list and cleared.',
                 'complete' => $candidate->barred_list_check === 'yes',
             ],
             'overseas_clearance' => [
                 'label' => 'Overseas Police Clearance',
-                'description' => 'Candidate has been cleared for overseas police checks, if applicable.',
+                'description' => 'EducationCandidate has been cleared for overseas police checks, if applicable.',
                 'complete' => $candidate->lived_overseas_six_months !== 'yes' || $candidate->overseas_police_clearance_check === 'yes',
             ],
             'proof_of_address' => [

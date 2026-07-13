@@ -1,8 +1,8 @@
 <?php
 
-namespace App\Filament\Resources\Vetting\Pages;
+namespace App\Filament\Resources\EducationVetting\Pages;
 
-use App\Filament\Resources\Vetting\VettingResource;
+use App\Filament\Resources\EducationVetting\VettingResource;
 use Filament\Resources\Pages\ListRecords;
 
 class ListVetting extends ListRecords

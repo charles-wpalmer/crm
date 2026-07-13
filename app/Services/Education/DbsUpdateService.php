@@ -1,6 +1,6 @@
 <?php
 
-namespace App\Services;
+namespace App\Services\Education;
 
 use App\Exceptions\Dbs\InvalidUpdateServiceResponseException;
 use App\Exceptions\Dbs\MissingCandidateDetailsException;

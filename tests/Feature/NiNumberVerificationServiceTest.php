@@ -4,7 +4,7 @@ use App\Ai\Agents\ProofOfNiParser;
 use App\Enums\DocumentType;
 use App\Models\CandidateDocument;
 use App\Models\EducationCandidate;
-use App\Services\NiNumberVerificationService;
+use App\Services\Ai\NiNumberVerificationService;
 use Illuminate\Support\Facades\Storage;
 use Laravel\Ai\Files\LocalImage;
 
@@ -29,7 +29,7 @@ test('verify throws when the candidate has no proof of NI document', function ()
     $candidate = EducationCandidate::factory()->create();
 
     (new NiNumberVerificationService)->verify($candidate);
-})->throws(RuntimeException::class, 'Candidate has no proof of NI document to verify.');
+})->throws(RuntimeException::class, 'EducationCandidate has no proof of NI document to verify.');
 
 test('verify marks the candidate as matching when the extracted NI number matches', function () {
     $candidate = EducationCandidate::factory()->create(['ni_number' => 'QQ123456C']);

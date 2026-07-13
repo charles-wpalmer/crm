@@ -4,7 +4,6 @@ namespace App\Filament\Resources\EducationCandidates;
 
 use App\Filament\Resources\EducationCandidates\Pages\EditEducationCandidate;
 use App\Filament\Resources\EducationCandidates\Pages\ListEducationCandidates;
-use App\Filament\Resources\EducationCandidates\Pages\ViewEducationCandidate;
 use App\Filament\Resources\EducationCandidates\Schemas\EducationCandidateForm;
 use App\Filament\Resources\EducationCandidates\Tables\EducationCandidatesTable;
 use App\Models\EducationCandidate;
@@ -28,7 +27,7 @@ class EducationCandidateResource extends Resource
 
     protected static ?string $pluralModelLabel = 'Candidates';
 
-    protected static ?string $modelLabel = 'Candidate';
+    protected static ?string $modelLabel = 'EducationCandidate';
 
     public static function canViewAny(): bool
     {
@@ -54,7 +53,6 @@ class EducationCandidateResource extends Resource
     {
         return [
             'index' => ListEducationCandidates::route('/'),
-            'view' => ViewEducationCandidate::route('/{record}'),
             'edit' => EditEducationCandidate::route('/{record}/edit'),
         ];
     }

@@ -1,6 +1,6 @@
 <?php
 
-namespace App\Filament\Resources\Vetting\Schemas;
+namespace App\Filament\Resources\EducationVetting\Schemas;
 
 use App\Enums\DocumentType;
 use App\Enums\Education\KeyStage;
@@ -11,10 +11,10 @@ use App\Models\CandidateSkill;
 use App\Models\EducationCandidate;
 use App\Models\JobTitle;
 use App\Models\Qualification;
-use App\Services\CandidateVettingRequirements;
-use App\Services\DbsUpdateService;
-use App\Services\NiNumberVerificationService;
-use App\Services\ProofOfAddressVerificationService;
+use App\Services\Ai\NiNumberVerificationService;
+use App\Services\Ai\ProofOfAddressVerificationService;
+use App\Services\Education\CandidateVettingRequirements;
+use App\Services\Education\DbsUpdateService;
 use Filament\Actions\Action;
 use Filament\Forms\Components\CheckboxList;
 use Filament\Forms\Components\DatePicker;
@@ -101,7 +101,7 @@ class VettingSteps
                 if ($isSecurityChecksStep && $record->refresh()->dnuCandidate()) {
                     Notification::make()
                         ->danger()
-                        ->title('Candidate flagged as DNU')
+                        ->title('EducationCandidate flagged as DNU')
                         ->body('This candidate has failed a required security check and cannot continue through the compliance process.')
                         ->send();
 
@@ -696,7 +696,7 @@ class VettingSteps
                                         static::photoDocument($record)->path,
                                         now()->addMinutes(10)
                                     ),
-                                    alt: 'Candidate photo',
+                                    alt: 'EducationCandidate photo',
                                 )
                                     ->imageHeight(160)
                                     ->imageWidth(160)

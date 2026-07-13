@@ -3,7 +3,7 @@
 namespace App\Filament\Widgets;
 
 use App\Models\EducationCandidate;
-use App\Services\CandidateDocumentRequirements;
+use App\Services\Education\CandidateDocumentRequirements;
 use Filament\Actions\Action;
 use Filament\Tables\Columns\TextColumn;
 use Filament\Tables\Table;

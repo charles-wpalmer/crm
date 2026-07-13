@@ -1,6 +1,6 @@
 <?php
 
-namespace App\Services;
+namespace App\Services\Ai;
 
 use App\Ai\Agents\ProofOfAddressParser;
 use App\DTOs\ProofOfAddressExtraction;
@@ -26,7 +26,7 @@ class ProofOfAddressVerificationService
         $document = $candidate->documents()->where('document_type', DocumentType::ProofOfAddress)->first();
 
         if (! $document) {
-            throw new RuntimeException('Candidate has no proof of address document to verify.');
+            throw new RuntimeException('EducationCandidate has no proof of address document to verify.');
         }
 
         $extraction = $this->parse(Storage::disk('local')->path($document->path));

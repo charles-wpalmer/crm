@@ -10,8 +10,8 @@ use App\Models\EducationCandidate;
 use App\Models\Industry;
 use App\Models\JobTitle;
 use App\Models\PayRate;
-use App\Services\CandidateVettingRequirements;
-use App\Services\DbsUpdateService;
+use App\Services\Education\CandidateVettingRequirements;
+use App\Services\Education\DbsUpdateService;
 
 function fullyCompliantCandidate(array $attributes = []): EducationCandidate
 {

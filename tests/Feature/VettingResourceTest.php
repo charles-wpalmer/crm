@@ -3,8 +3,8 @@
 use App\Ai\Agents\ProofOfAddressParser;
 use App\Ai\Agents\ProofOfNiParser;
 use App\Enums\DocumentType;
-use App\Filament\Resources\Vetting\Pages\ListVetting;
-use App\Filament\Resources\Vetting\Pages\VettingWizard;
+use App\Filament\Resources\EducationVetting\Pages\ListVetting;
+use App\Filament\Resources\EducationVetting\Pages\VettingWizard;
 use App\Models\CandidateCandidateStatus;
 use App\Models\CandidateDocument;
 use App\Models\CandidateSkill;
