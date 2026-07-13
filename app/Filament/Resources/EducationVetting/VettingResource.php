@@ -1,10 +1,10 @@
 <?php
 
-namespace App\Filament\Resources\Vetting;
+namespace App\Filament\Resources\EducationVetting;
 
-use App\Filament\Resources\Vetting\Pages\ListVetting;
-use App\Filament\Resources\Vetting\Pages\VettingWizard;
-use App\Filament\Resources\Vetting\Tables\VettingTable;
+use App\Filament\Resources\EducationVetting\Pages\ListVetting;
+use App\Filament\Resources\EducationVetting\Pages\VettingWizard;
+use App\Filament\Resources\EducationVetting\Tables\VettingTable;
 use App\Models\EducationCandidate;
 use BackedEnum;
 use Filament\Resources\Resource;
@@ -26,7 +26,7 @@ class VettingResource extends Resource
 
     protected static ?string $pluralModelLabel = 'Compliance';
 
-    protected static ?string $modelLabel = 'Candidate';
+    protected static ?string $modelLabel = 'EducationCandidate';
 
     public static function canViewAny(): bool
     {

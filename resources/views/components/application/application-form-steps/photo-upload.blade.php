@@ -67,7 +67,7 @@
     @if ($photo)
         <div class="flex flex-col items-center gap-4">
             @if ($photo->isPreviewable())
-                <img src="{{ $photo->temporaryUrl() }}" alt="{{ __('Candidate photo preview') }}" class="size-40 rounded-full object-cover ring-4 ring-zinc-100 dark:ring-zinc-800" />
+                <img src="{{ $photo->temporaryUrl() }}" alt="{{ __('EducationCandidate photo preview') }}" class="size-40 rounded-full object-cover ring-4 ring-zinc-100 dark:ring-zinc-800" />
             @else
                 <p class="text-sm text-zinc-600 dark:text-zinc-400">{{ $photo->getClientOriginalName() }}</p>
             @endif
@@ -82,7 +82,7 @@
         </div>
     @else
         <div x-show="mode === 'existing'" class="flex flex-col items-center gap-4">
-            <img src="{{ $this->existingPhotoUrl }}" alt="{{ __('Candidate photo') }}" class="size-40 rounded-full object-cover ring-4 ring-zinc-100 dark:ring-zinc-800" />
+            <img src="{{ $this->existingPhotoUrl }}" alt="{{ __('EducationCandidate photo') }}" class="size-40 rounded-full object-cover ring-4 ring-zinc-100 dark:ring-zinc-800" />
 
             <flux:button type="button" variant="ghost" @click="mode = 'choose'">
                 {{ __('Replace photo') }}

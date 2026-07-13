@@ -41,8 +41,8 @@ class CandidatesRelationManager extends RelationManager
             ])
             ->headerActions([
                 AttachAction::make()
-                    ->label('Add Candidate')
-                    ->modalHeading('Add Candidate to Pool')
+                    ->label('Add EducationCandidate')
+                    ->modalHeading('Add EducationCandidate to Pool')
                     ->recordSelectSearchColumns(['first_name', 'last_name', 'email'])
                     ->multiple(),
             ])

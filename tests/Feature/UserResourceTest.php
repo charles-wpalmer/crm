@@ -41,7 +41,7 @@ test('users list excludes users with a candidate id', function () {
 
     $candidateUser = User::factory()->create([
         'candidate_id' => 1,
-        'candidate_type' => 'App\\Models\\Candidate',
+        'candidate_type' => 'App\\Models\\EducationCandidate',
     ]);
 
     Livewire::test(ListUsers::class)

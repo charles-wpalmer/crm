@@ -2,7 +2,7 @@
 
 use App\Enums\DocumentType;
 use App\Filament\Resources\EducationCandidates\Pages\EditEducationCandidate;
-use App\Filament\Resources\Vetting\VettingResource;
+use App\Filament\Resources\EducationVetting\VettingResource;
 use App\Models\CandidateDocument;
 use App\Models\EducationApplication;
 use App\Models\EducationCandidate;

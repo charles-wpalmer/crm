@@ -1,8 +1,8 @@
 <?php
 
-namespace App\Filament\Resources\Vetting\Tables;
+namespace App\Filament\Resources\EducationVetting\Tables;
 
-use App\Filament\Resources\Vetting\VettingResource;
+use App\Filament\Resources\EducationVetting\VettingResource;
 use App\Models\EducationCandidate;
 use Filament\Actions\Action;
 use Filament\Tables\Columns\TextColumn;

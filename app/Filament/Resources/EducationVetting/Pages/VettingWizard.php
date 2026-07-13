@@ -1,12 +1,12 @@
 <?php
 
-namespace App\Filament\Resources\Vetting\Pages;
+namespace App\Filament\Resources\EducationVetting\Pages;
 
 use App\Filament\Resources\EducationCandidates\Pages\Concerns\HasCandidateStatusSubheading;
-use App\Filament\Resources\Vetting\Schemas\VettingSteps;
-use App\Filament\Resources\Vetting\VettingResource;
+use App\Filament\Resources\EducationVetting\Schemas\VettingSteps;
+use App\Filament\Resources\EducationVetting\VettingResource;
 use App\Models\EducationCandidate;
-use App\Services\CandidateVettingRequirements;
+use App\Services\Education\CandidateVettingRequirements;
 use Filament\Actions\Action;
 use Filament\Resources\Pages\EditRecord;
 use Filament\Schemas\Components\Component;

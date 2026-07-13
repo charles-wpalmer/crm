@@ -20,6 +20,7 @@ class Company extends Model
     {
         return [
             'email_provider' => EmailProvider::class,
+            'ms_client_secret' => 'encrypted',
         ];
     }
 

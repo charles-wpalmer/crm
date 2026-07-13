@@ -22,7 +22,7 @@ class EducationBookingsTable
                     ->searchable()
                     ->sortable(),
                 TextColumn::make('education_candidate.name')
-                    ->label('Candidate')
+                    ->label('EducationCandidate')
                     ->searchable()
                     ->sortable(),
                 TextColumn::make('start_date')

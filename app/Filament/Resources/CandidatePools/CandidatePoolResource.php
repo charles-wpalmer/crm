@@ -29,7 +29,7 @@ class CandidatePoolResource extends Resource
 
     protected static ?string $recordTitleAttribute = 'name';
 
-    protected static ?string $pluralModelLabel = 'Candidate Pools';
+    protected static ?string $pluralModelLabel = 'EducationCandidate Pools';
 
     protected static ?string $modelLabel = 'Pool';
 

@@ -4,7 +4,7 @@ use App\Ai\Agents\ProofOfAddressParser;
 use App\Enums\DocumentType;
 use App\Models\CandidateDocument;
 use App\Models\EducationCandidate;
-use App\Services\ProofOfAddressVerificationService;
+use App\Services\Ai\ProofOfAddressVerificationService;
 use Illuminate\Support\Facades\Storage;
 use Laravel\Ai\Files\LocalImage;
 
@@ -29,7 +29,7 @@ test('verify throws when the candidate has no proof of address document', functi
     $candidate = EducationCandidate::factory()->create();
 
     (new ProofOfAddressVerificationService)->verify($candidate);
-})->throws(RuntimeException::class, 'Candidate has no proof of address document to verify.');
+})->throws(RuntimeException::class, 'EducationCandidate has no proof of address document to verify.');
 
 test('verify marks the candidate as matching when the extracted address matches', function () {
     $candidate = EducationCandidate::factory()->create([

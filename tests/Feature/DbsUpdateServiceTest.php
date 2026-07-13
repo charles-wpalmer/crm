@@ -7,7 +7,7 @@ use App\Exceptions\Dbs\UpdateServiceCheckRejectedException;
 use App\Models\Company;
 use App\Models\EducationCandidate;
 use App\Models\User;
-use App\Services\DbsUpdateService;
+use App\Services\Education\DbsUpdateService;
 use Illuminate\Support\Facades\Http;
 
 test('check stores the status and checked-at timestamp returned by the update service on the candidate', function () {
@@ -64,7 +64,7 @@ test('check throws when the candidate has no first name', function () {
     try {
         (new DbsUpdateService)->check($candidate);
     } catch (MissingCandidateDetailsException $exception) {
-        expect($exception->getMessage())->toBe('Candidate is missing details required for a DBS Update Service check.');
+        expect($exception->getMessage())->toBe('EducationCandidate is missing details required for a DBS Update Service check.');
 
         return;
     }
@@ -82,7 +82,7 @@ test('check throws when the candidate has no dbs certificate number', function (
     try {
         (new DbsUpdateService)->check($candidate);
     } catch (MissingCertificateNumberException $exception) {
-        expect($exception->getMessage())->toBe('Candidate does not have a DBS certificate number to check.');
+        expect($exception->getMessage())->toBe('EducationCandidate does not have a DBS certificate number to check.');
         expect($exception->context())->toBe(['candidate_id' => $candidate->id]);
 
         return;
@@ -104,7 +104,7 @@ test('check throws when the candidate\'s company has no legal name', function ()
     try {
         (new DbsUpdateService)->check($candidate);
     } catch (MissingCompanyLegalNameException $exception) {
-        expect($exception->getMessage())->toBe('Candidate\'s company has no legal name set for a DBS Update Service check.');
+        expect($exception->getMessage())->toBe('EducationCandidate\'s company has no legal name set for a DBS Update Service check.');
         expect($exception->context())->toBe([
             'candidate_id' => $candidate->id,
             'company_id' => $company->id,

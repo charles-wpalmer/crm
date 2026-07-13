@@ -8,7 +8,7 @@ class MissingCompanyLegalNameException extends DbsUpdateServiceException
 {
     public function __construct(EducationCandidate $candidate)
     {
-        parent::__construct("Candidate's company has no legal name set for a DBS Update Service check.", $candidate);
+        parent::__construct("EducationCandidate's company has no legal name set for a DBS Update Service check.", $candidate);
     }
 
     /** @return array<string, mixed> */

@@ -7,8 +7,8 @@ use App\Enums\EmailProvider;
 use App\Models\EducationApplication;
 use App\Models\EducationCandidate;
 use App\Models\EmailTemplate;
-use App\Services\MailgunMailer;
-use App\Services\MicrosoftGraphMailer;
+use App\Services\Mail\MailgunMailer;
+use App\Services\Mail\MicrosoftGraphMailer;
 use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Foundation\Queue\Queueable;
 
@@ -43,7 +43,7 @@ class SendApplicationEmail implements ShouldQueue
         try {
             $mailer = match ($this->candidate->company->email_provider) {
                 EmailProvider::Mailgun => new MailgunMailer,
-                default => new MicrosoftGraphMailer,
+                default => new MicrosoftGraphMailer($this->candidate->company),
             };
 
             $mailer->send(

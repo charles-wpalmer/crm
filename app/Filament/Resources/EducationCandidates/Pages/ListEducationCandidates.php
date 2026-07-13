@@ -17,8 +17,8 @@ class ListEducationCandidates extends ListRecords
     {
         return [
             CreateAction::make()
-                ->label('New Candidate')
-                ->modalHeading('Add Candidate')
+                ->label('New EducationCandidate')
+                ->modalHeading('Add EducationCandidate')
                 ->createAnother(false)
                 ->modalWidth('sm')
                 ->schema([

@@ -1,6 +1,6 @@
 <?php
 
-namespace App\Services;
+namespace App\Services\Education;
 
 use App\Models\EducationCandidate;
 use App\Models\Industry;

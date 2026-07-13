@@ -3,7 +3,7 @@
 use App\Enums\DocumentType;
 use App\Models\EducationApplication;
 use App\Models\EducationCandidate;
-use App\Services\Document;
+use App\Services\Education\Document;
 use Illuminate\Database\Migrations\Migration;
 use Illuminate\Database\Schema\Blueprint;
 use Illuminate\Support\Facades\Schema;
