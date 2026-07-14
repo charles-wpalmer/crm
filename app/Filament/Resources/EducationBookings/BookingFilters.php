@@ -4,7 +4,9 @@ namespace App\Filament\Resources\EducationBookings;
 
 use App\Models\EducationCandidate;
 use App\Models\EducationClient;
+use App\Models\User;
 use Filament\Tables\Filters\SelectFilter;
+use Illuminate\Support\Facades\Auth;
 
 class BookingFilters
 {
@@ -36,6 +38,20 @@ class BookingFilters
 
                     return [$candidate->id => $candidate->trashed() ? "{$name} (deleted)" : $name];
                 })
+                ->toArray()
+            );
+    }
+
+    public static function consultant(): SelectFilter
+    {
+        return SelectFilter::make('consultant_id')
+            ->label('Consultant')
+            ->searchable()
+            ->visible(fn (): bool => Auth::user()?->isAdmin() ?? false)
+            ->options(fn (): array => User::role('consultant')
+                ->where('company_id', Auth::user()?->company_id)
+                ->orderBy('name')
+                ->pluck('name', 'id')
                 ->toArray()
             );
     }

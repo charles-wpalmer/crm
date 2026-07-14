@@ -5,6 +5,7 @@ namespace App\Models;
 use App\Casts\Money;
 use App\Models\Traits\BelongsToCompany;
 use Database\Factories\EducationBookingFactory;
+use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
@@ -54,5 +55,19 @@ class EducationBooking extends Model
     public function dayPeriods(): HasMany
     {
         return $this->hasMany(EducationBookingDayPeriod::class)->orderBy('date');
+    }
+
+    public function consultant(): BelongsTo
+    {
+        return $this->belongsTo(User::class, 'consultant_id');
+    }
+
+    public function scopeVisibleToCurrentUser(Builder $query): Builder
+    {
+        if (auth()->user()?->isAdmin()) {
+            return $query;
+        }
+
+        return $query->where('consultant_id', auth()->id());
     }
 }

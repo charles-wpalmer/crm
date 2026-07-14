@@ -7,6 +7,8 @@ use App\Filament\Resources\EducationBookings\Pages\ListEducationBookings;
 use App\Jobs\GenerateBookingConfirmationPdf;
 use App\Jobs\SendBookingConfirmationEmail;
 use App\Jobs\SendClientBookingConfirmationEmail;
+use App\Models\CandidateCandidateStatus;
+use App\Models\CandidateStatus;
 use App\Models\EducationBooking;
 use App\Models\EducationBookingDayPeriod;
 use App\Models\EducationCandidate;
@@ -16,12 +18,31 @@ use App\Models\JobTitle;
 use App\Models\PayRate;
 use App\Models\User;
 use Carbon\Carbon;
+use Database\Seeders\RoleSeeder;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Queue;
 use Livewire\Livewire;
 
+function assignCandidateStatus(EducationCandidate $candidate, Industry $industry, string $companyId, string $statusName): void
+{
+    $status = CandidateStatus::factory()->create([
+        'company_id' => $companyId,
+        'industry_id' => $industry->id,
+        'name' => $statusName,
+    ]);
+
+    CandidateCandidateStatus::create([
+        'model_type' => EducationCandidate::class,
+        'model_id' => $candidate->id,
+        'candidate_status_id' => $status->id,
+    ]);
+}
+
 beforeEach(function () {
+    $this->seed(RoleSeeder::class);
+
     $this->user = User::factory()->create();
+    $this->user->assignRole('admin');
     $this->actingAs($this->user);
 
     $this->industry = Industry::factory()->create(['slug' => 'education']);
@@ -579,4 +600,174 @@ test('the all section table can be filtered by client and by candidate', functio
         ->filterTable('education_candidate_id', $this->candidate->id)
         ->assertCanSeeTableRecords([$matchingBooking, $otherClientBooking])
         ->assertCanNotSeeTableRecords([$otherCandidateBooking]);
+});
+
+test('creating a booking copies the consultant_id from the selected candidate', function () {
+    $consultant = User::factory()->create(['company_id' => $this->user->company_id]);
+    $this->candidate->update(['consultant_id' => $consultant->id]);
+
+    Livewire::test(CreateEducationBooking::class)
+        ->fillForm([
+            'education_client_id' => $this->client->id,
+            'education_candidate_id' => $this->candidate->id,
+            'job_title_id' => $this->jobTitle->id,
+            'start_date' => '2026-08-03',
+            'end_date' => '2026-08-04',
+        ])
+        ->fillForm([
+            'day_periods' => [
+                ['date' => '2026-08-03', 'period' => 'full_day'],
+                ['date' => '2026-08-04', 'period' => 'am'],
+            ],
+        ])
+        ->fillForm([
+            'day_charge_rate' => 320,
+            'half_day_charge_rate' => 160,
+        ])
+        ->call('create')
+        ->assertHasNoFormErrors();
+
+    expect(EducationBooking::first()->consultant_id)->toBe($consultant->id);
+});
+
+test('editing a booking re-syncs consultant_id when the candidate changes', function () {
+    $originalConsultant = User::factory()->create(['company_id' => $this->user->company_id]);
+    $newConsultant = User::factory()->create(['company_id' => $this->user->company_id]);
+
+    $this->candidate->update(['consultant_id' => $originalConsultant->id]);
+    $otherCandidate = EducationCandidate::factory()->create([
+        'company_id' => $this->user->company_id,
+        'consultant_id' => $newConsultant->id,
+    ]);
+
+    $booking = EducationBooking::factory()->create([
+        'company_id' => $this->user->company_id,
+        'education_client_id' => $this->client->id,
+        'education_candidate_id' => $this->candidate->id,
+        'job_title_id' => $this->jobTitle->id,
+        'consultant_id' => $originalConsultant->id,
+        'day_charge_rate' => 320,
+    ]);
+
+    Livewire::test(EditEducationBooking::class, ['record' => $booking->getRouteKey()])
+        ->fillForm([
+            'education_candidate_id' => $otherCandidate->id,
+            'day_charge_rate' => 320,
+        ])
+        ->call('save')
+        ->assertHasNoFormErrors();
+
+    expect($booking->fresh()->consultant_id)->toBe($newConsultant->id);
+});
+
+test('a non-admin user only sees bookings assigned to their own consultant_id', function () {
+    $consultant = User::factory()->create(['company_id' => $this->user->company_id]);
+    $consultant->assignRole('consultant');
+
+    $ownBooking = EducationBooking::factory()->create([
+        'company_id' => $this->user->company_id,
+        'education_client_id' => $this->client->id,
+        'education_candidate_id' => $this->candidate->id,
+        'job_title_id' => $this->jobTitle->id,
+        'consultant_id' => $consultant->id,
+    ]);
+
+    $otherConsultantBooking = EducationBooking::factory()->create([
+        'company_id' => $this->user->company_id,
+        'education_client_id' => $this->client->id,
+        'education_candidate_id' => $this->candidate->id,
+        'job_title_id' => $this->jobTitle->id,
+        'consultant_id' => $this->user->id,
+    ]);
+
+    $this->actingAs($consultant);
+    Cache::put("user.{$consultant->id}.active_industry", $this->industry->slug);
+    Cache::put("user.{$consultant->id}.active_industry_id", $this->industry->id);
+
+    Livewire::test(ListEducationBookings::class)
+        ->set('activeSection', 'all')
+        ->assertCanSeeTableRecords([$ownBooking])
+        ->assertCanNotSeeTableRecords([$otherConsultantBooking]);
+});
+
+test('an admin sees all bookings regardless of consultant_id', function () {
+    $consultant = User::factory()->create(['company_id' => $this->user->company_id]);
+
+    $booking = EducationBooking::factory()->create([
+        'company_id' => $this->user->company_id,
+        'education_client_id' => $this->client->id,
+        'education_candidate_id' => $this->candidate->id,
+        'job_title_id' => $this->jobTitle->id,
+        'consultant_id' => $consultant->id,
+    ]);
+
+    Livewire::test(ListEducationBookings::class)
+        ->set('activeSection', 'all')
+        ->assertCanSeeTableRecords([$booking]);
+});
+
+test('the consultant filter is only visible to admins', function () {
+    $consultant = User::factory()->create(['company_id' => $this->user->company_id]);
+    $consultant->assignRole('consultant');
+
+    Livewire::test(ListEducationBookings::class)
+        ->set('activeSection', 'all')
+        ->assertTableFilterVisible('consultant_id');
+
+    $this->actingAs($consultant);
+    Cache::put("user.{$consultant->id}.active_industry", $this->industry->slug);
+    Cache::put("user.{$consultant->id}.active_industry_id", $this->industry->id);
+
+    Livewire::test(ListEducationBookings::class)
+        ->set('activeSection', 'all')
+        ->assertTableFilterHidden('consultant_id');
+});
+
+test('the create form only offers candidates with a Live status', function () {
+    assignCandidateStatus($this->candidate, $this->industry, $this->user->company_id, 'Live');
+
+    $dnuCandidate = EducationCandidate::factory()->create(['company_id' => $this->user->company_id]);
+    assignCandidateStatus($dnuCandidate, $this->industry, $this->user->company_id, 'DNU');
+
+    $offlineCandidate = EducationCandidate::factory()->create(['company_id' => $this->user->company_id]);
+    assignCandidateStatus($offlineCandidate, $this->industry, $this->user->company_id, 'Offline');
+
+    $onboardingCandidate = EducationCandidate::factory()->create(['company_id' => $this->user->company_id]);
+    assignCandidateStatus($onboardingCandidate, $this->industry, $this->user->company_id, 'Onboarding');
+
+    $vettingCandidate = EducationCandidate::factory()->create(['company_id' => $this->user->company_id]);
+    assignCandidateStatus($vettingCandidate, $this->industry, $this->user->company_id, 'Vetting');
+
+    $noStatusCandidate = EducationCandidate::factory()->create(['company_id' => $this->user->company_id]);
+
+    Livewire::test(CreateEducationBooking::class)
+        ->assertFormFieldExists('education_candidate_id', function ($field) use ($dnuCandidate, $offlineCandidate, $onboardingCandidate, $vettingCandidate, $noStatusCandidate) {
+            $options = $field->getOptions();
+
+            return array_key_exists($this->candidate->id, $options)
+                && ! array_key_exists($dnuCandidate->id, $options)
+                && ! array_key_exists($offlineCandidate->id, $options)
+                && ! array_key_exists($onboardingCandidate->id, $options)
+                && ! array_key_exists($vettingCandidate->id, $options)
+                && ! array_key_exists($noStatusCandidate->id, $options);
+        });
+});
+
+test('the edit form still shows the bookings existing candidate even if no longer Live', function () {
+    assignCandidateStatus($this->candidate, $this->industry, $this->user->company_id, 'Live');
+
+    $booking = EducationBooking::factory()->create([
+        'company_id' => $this->user->company_id,
+        'education_client_id' => $this->client->id,
+        'education_candidate_id' => $this->candidate->id,
+        'job_title_id' => $this->jobTitle->id,
+    ]);
+
+    $this->candidate->statuses()->delete();
+    assignCandidateStatus($this->candidate, $this->industry, $this->user->company_id, 'DNU');
+
+    Livewire::test(EditEducationBooking::class, ['record' => $booking->getRouteKey()])
+        ->assertFormFieldExists('education_candidate_id', function ($field) {
+            return array_key_exists($this->candidate->id, $field->getOptions());
+        });
 });

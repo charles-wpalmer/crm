@@ -69,7 +69,14 @@ class EducationBookingForm
                             ->afterStateUpdated(fn (Set $set, Get $get) => static::applyDefaultRates($set, $get)),
                         Select::make('education_candidate_id')
                             ->label('Candidate')
-                            ->options(fn (): array => EducationCandidate::query()
+                            ->options(fn (?EducationBooking $record): array => EducationCandidate::query()
+                                ->when(
+                                    ! $record,
+                                    fn ($query) => $query->whereHas(
+                                        'statuses.status',
+                                        fn ($statusQuery) => $statusQuery->where('name', 'Live')
+                                    )
+                                )
                                 ->get()
                                 ->mapWithKeys(fn (EducationCandidate $candidate): array => [
                                     $candidate->id => trim("{$candidate->first_name} {$candidate->last_name}"),

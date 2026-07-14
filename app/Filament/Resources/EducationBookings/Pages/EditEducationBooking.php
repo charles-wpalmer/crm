@@ -6,6 +6,7 @@ use App\Actions\Bookings\BookingCreated;
 use App\Filament\Resources\EducationBookings\EducationBookingResource;
 use App\Filament\Resources\EducationBookings\Schemas\EducationBookingForm;
 use App\Models\EducationBooking;
+use App\Models\EducationCandidate;
 use Filament\Actions\Action;
 use Filament\Actions\DeleteAction;
 use Filament\Actions\ForceDeleteAction;
@@ -50,6 +51,14 @@ class EditEducationBooking extends EditRecord
         $record = $this->record;
 
         $data['day_periods'] = EducationBookingForm::loadDayPeriods($record);
+
+        return $data;
+    }
+
+    /** @param  array<string, mixed>  $data */
+    protected function mutateFormDataBeforeSave(array $data): array
+    {
+        $data['consultant_id'] = EducationCandidate::find($data['education_candidate_id'] ?? null)?->consultant_id;
 
         return $data;
     }

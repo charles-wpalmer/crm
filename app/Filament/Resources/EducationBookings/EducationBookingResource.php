@@ -8,7 +8,6 @@ use App\Filament\Resources\EducationBookings\Pages\ListEducationBookings;
 use App\Filament\Resources\EducationBookings\Schemas\EducationBookingForm;
 use App\Filament\Resources\EducationBookings\Tables\EducationBookingsTable;
 use App\Models\EducationBooking;
-use App\Models\User;
 use BackedEnum;
 use Filament\Resources\Resource;
 use Filament\Schemas\Schema;
@@ -49,6 +48,11 @@ class EducationBookingResource extends Resource
         return [
             //
         ];
+    }
+
+    public static function getEloquentQuery(): Builder
+    {
+        return parent::getEloquentQuery()->visibleToCurrentUser();
     }
 
     public static function getPages(): array
