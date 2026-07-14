@@ -3,7 +3,10 @@
 namespace App\Filament\Resources\EducationBookings\Schemas;
 
 use App\Enums\BookingDayPeriod;
+use App\Models\EducationBooking;
+use App\Models\EducationBookingDayPeriod;
 use App\Models\EducationCandidate;
+use App\Models\EducationClient;
 use App\Models\JobTitle;
 use App\Models\PayRate;
 use Carbon\Carbon;
@@ -13,6 +16,8 @@ use Filament\Forms\Components\Hidden;
 use Filament\Forms\Components\Repeater;
 use Filament\Forms\Components\Select;
 use Filament\Forms\Components\TextInput;
+use Filament\Forms\Components\TimePicker;
+use Filament\Schemas\Components\Grid;
 use Filament\Schemas\Components\Section;
 use Filament\Schemas\Components\Utilities\Get;
 use Filament\Schemas\Components\Utilities\Set;
@@ -30,10 +35,25 @@ class EducationBookingForm
                     ->columns(2)
                     ->schema([
                         Select::make('education_client_id')
-                            ->relationship('education_client', 'name')
+                            ->label('Client')
+                            ->options(fn (): array => EducationClient::query()
+                                ->pluck('name', 'id')
+                                ->toArray()
+                            )
+                            ->getOptionLabelUsing(function (mixed $value): ?string {
+                                $client = EducationClient::withTrashed()->find($value);
+
+                                if (! $client) {
+                                    return null;
+                                }
+
+                                return $client->trashed() ? "{$client->name} (deleted)" : $client->name;
+                            })
                             ->required()
                             ->searchable()
-                            ->preload(),
+                            ->preload()
+                            ->live()
+                            ->afterStateUpdated(fn (Set $set, Get $get) => static::applyDefaultRates($set, $get)),
                         Select::make('job_title_id')
                             ->label('Job Title')
                             ->options(fn (): array => JobTitle::query()
@@ -46,15 +66,32 @@ class EducationBookingForm
                             ->searchable()
                             ->preload()
                             ->live()
-                            ->afterStateUpdated(fn (Set $set, Get $get) => static::applyDefaultPayRates($set, $get)),
+                            ->afterStateUpdated(fn (Set $set, Get $get) => static::applyDefaultRates($set, $get)),
                         Select::make('education_candidate_id')
-                            ->relationship('education_candidate', 'first_name')
-                            ->getOptionLabelFromRecordUsing(fn (EducationCandidate $record): string => trim("{$record->first_name} {$record->last_name}"))
+                            ->label('Candidate')
+                            ->options(fn (): array => EducationCandidate::query()
+                                ->get()
+                                ->mapWithKeys(fn (EducationCandidate $candidate): array => [
+                                    $candidate->id => trim("{$candidate->first_name} {$candidate->last_name}"),
+                                ])
+                                ->toArray()
+                            )
+                            ->getOptionLabelUsing(function (mixed $value): ?string {
+                                $candidate = EducationCandidate::withTrashed()->find($value);
+
+                                if (! $candidate) {
+                                    return null;
+                                }
+
+                                $name = trim("{$candidate->first_name} {$candidate->last_name}");
+
+                                return $candidate->trashed() ? "{$name} (deleted)" : $name;
+                            })
                             ->required()
                             ->searchable()
                             ->preload()
                             ->live()
-                            ->afterStateUpdated(fn (Set $set, Get $get) => static::applyDefaultPayRates($set, $get)),
+                            ->afterStateUpdated(fn (Set $set, Get $get) => static::applyDefaultRates($set, $get)),
                         DatePicker::make('start_date')
                             ->required()
                             ->live()
@@ -82,6 +119,7 @@ class EducationBookingForm
                             ->addable(false)
                             ->deletable(false)
                             ->reorderable(false)
+                            ->dehydrated(false)
                             ->itemLabel(fn (array $state): ?string => filled($state['date'] ?? null)
                                 ? Carbon::parse($state['date'])->format('D j M Y')
                                 : null
@@ -91,80 +129,137 @@ class EducationBookingForm
                                 Select::make('period')
                                     ->label('Session')
                                     ->options(BookingDayPeriod::options())
-                                    ->required(),
+                                    ->required()
+                                    ->live(),
+                                TimePicker::make('time_from')
+                                    ->label('From')
+                                    ->seconds(false)
+                                    ->required(fn (Get $get): bool => $get('period') === BookingDayPeriod::Hours->value)
+                                    ->visible(fn (Get $get): bool => $get('period') === BookingDayPeriod::Hours->value),
+                                TimePicker::make('time_to')
+                                    ->label('To')
+                                    ->seconds(false)
+                                    ->required(fn (Get $get): bool => $get('period') === BookingDayPeriod::Hours->value)
+                                    ->visible(fn (Get $get): bool => $get('period') === BookingDayPeriod::Hours->value),
                             ])
-                            ->columns(1)
+                            ->columns(3)
                             ->columnSpanFull(),
                     ]),
 
                 Section::make('Pay & Charge Rates')
                     ->columnSpanFull()
-                    ->columns(3)
                     ->schema([
-                        TextInput::make('hourly_rate')
-                            ->label('Hourly Pay Rate')
-                            ->helperText('Defaults from the candidate\'s pay rate for this job title. Override if needed.')
-                            ->numeric()
-                            ->prefix('£')
-                            ->step(0.01)
-                            ->minValue(0),
-                        TextInput::make('day_rate')
-                            ->label('Day Pay Rate')
-                            ->helperText('Defaults from the candidate\'s pay rate for this job title. Override if needed.')
-                            ->numeric()
-                            ->prefix('£')
-                            ->step(0.01)
-                            ->minValue(0),
-                        TextInput::make('half_day_rate')
-                            ->label('Half Day Pay Rate')
-                            ->helperText('Defaults from the candidate\'s pay rate for this job title. Override if needed.')
-                            ->numeric()
-                            ->prefix('£')
-                            ->step(0.01)
-                            ->minValue(0),
-                        TextInput::make('hourly_charge_rate')
-                            ->label('Hourly Charge Rate')
-                            ->required()
-                            ->numeric()
-                            ->prefix('£')
-                            ->step(0.01)
-                            ->minValue(0),
-                        TextInput::make('day_charge_rate')
-                            ->label('Day Charge Rate')
-                            ->required()
-                            ->numeric()
-                            ->prefix('£')
-                            ->step(0.01)
-                            ->minValue(0),
-                        TextInput::make('half_day_charge_rate')
-                            ->label('Half Day Charge Rate')
-                            ->required()
-                            ->numeric()
-                            ->prefix('£')
-                            ->step(0.01)
-                            ->minValue(0),
+                        Grid::make(3)
+                            ->schema([
+                                TextInput::make('day_rate')
+                                    ->label('Day Pay Rate')
+                                    ->helperText('Defaults from the candidate\'s pay rate for this job title. Override if needed.')
+                                    ->numeric()
+                                    ->prefix('£')
+                                    ->step(0.01)
+                                    ->minValue(0)
+                                    ->visible(fn (Get $get): bool => static::dayRateVisible($get)),
+                                TextInput::make('half_day_rate')
+                                    ->label('Half Day Pay Rate')
+                                    ->helperText('Defaults from the candidate\'s pay rate for this job title. Override if needed.')
+                                    ->numeric()
+                                    ->prefix('£')
+                                    ->step(0.01)
+                                    ->minValue(0)
+                                    ->visible(fn (Get $get): bool => static::halfDayRateVisible($get)),
+                                TextInput::make('hourly_rate')
+                                    ->label('Hourly Pay Rate')
+                                    ->helperText('Defaults from the candidate\'s pay rate for this job title. Override if needed.')
+                                    ->numeric()
+                                    ->prefix('£')
+                                    ->step(0.01)
+                                    ->minValue(0)
+                                    ->visible(fn (Get $get): bool => static::hourlyRateVisible($get)),
+                            ]),
+                        Grid::make(3)
+                            ->schema([
+                                TextInput::make('day_charge_rate')
+                                    ->label('Day Charge Rate')
+                                    ->helperText('Defaults from the client\'s charge rate for this job title. Override if needed.')
+                                    ->required()
+                                    ->numeric()
+                                    ->prefix('£')
+                                    ->step(0.01)
+                                    ->minValue(0)
+                                    ->visible(fn (Get $get): bool => static::dayRateVisible($get)),
+                                TextInput::make('half_day_charge_rate')
+                                    ->label('Half Day Charge Rate')
+                                    ->helperText('Defaults from the client\'s charge rate for this job title. Override if needed.')
+                                    ->required()
+                                    ->numeric()
+                                    ->prefix('£')
+                                    ->step(0.01)
+                                    ->minValue(0)
+                                    ->visible(fn (Get $get): bool => static::halfDayRateVisible($get)),
+                                TextInput::make('hourly_charge_rate')
+                                    ->label('Hourly Charge Rate')
+                                    ->helperText('Defaults from the client\'s charge rate for this job title. Override if needed.')
+                                    ->required()
+                                    ->numeric()
+                                    ->prefix('£')
+                                    ->step(0.01)
+                                    ->minValue(0)
+                                    ->visible(fn (Get $get): bool => static::hourlyRateVisible($get)),
+                            ]),
                     ]),
             ]);
     }
 
-    protected static function applyDefaultPayRates(Set $set, Get $get): void
+    protected static function dayRateVisible(Get $get): bool
     {
-        $candidateId = $get('education_candidate_id');
-        $jobTitleId = $get('job_title_id');
+        $periods = collect($get('day_periods') ?? [])->pluck('period')->filter();
 
-        if (blank($candidateId) || blank($jobTitleId)) {
-            return;
+        return $periods->isEmpty() || $periods->contains(BookingDayPeriod::FullDay->value);
+    }
+
+    protected static function halfDayRateVisible(Get $get): bool
+    {
+        $periods = collect($get('day_periods') ?? [])->pluck('period')->filter();
+
+        return $periods->contains(BookingDayPeriod::Am->value) || $periods->contains(BookingDayPeriod::Pm->value);
+    }
+
+    protected static function hourlyRateVisible(Get $get): bool
+    {
+        $periods = collect($get('day_periods') ?? [])->pluck('period')->filter();
+
+        return $periods->contains(BookingDayPeriod::Hours->value);
+    }
+
+    protected static function applyDefaultRates(Set $set, Get $get): void
+    {
+        $jobTitleId = $get('job_title_id');
+        $candidateId = $get('education_candidate_id');
+        $clientId = $get('education_client_id');
+
+        if (filled($candidateId) && filled($jobTitleId)) {
+            $payRate = PayRate::query()
+                ->where('model_type', EducationCandidate::class)
+                ->where('model_id', $candidateId)
+                ->where('job_title_id', $jobTitleId)
+                ->first();
+
+            $set('day_rate', $payRate?->day_rate);
+            $set('half_day_rate', $payRate?->half_day_rate);
+            $set('hourly_rate', $payRate?->hourly_rate);
         }
 
-        $payRate = PayRate::query()
-            ->where('model_type', EducationCandidate::class)
-            ->where('model_id', $candidateId)
-            ->where('job_title_id', $jobTitleId)
-            ->first();
+        if (filled($clientId) && filled($jobTitleId)) {
+            $chargeRate = PayRate::query()
+                ->where('model_type', EducationClient::class)
+                ->where('model_id', $clientId)
+                ->where('job_title_id', $jobTitleId)
+                ->first();
 
-        $set('hourly_rate', $payRate?->hourly_rate);
-        $set('day_rate', $payRate?->day_rate);
-        $set('half_day_rate', $payRate?->half_day_rate);
+            $set('day_charge_rate', $chargeRate?->day_rate);
+            $set('half_day_charge_rate', $chargeRate?->half_day_rate);
+            $set('hourly_charge_rate', $chargeRate?->hourly_rate);
+        }
     }
 
     protected static function regenerateDayPeriods(Set $set, Get $get): void
@@ -184,13 +279,54 @@ class EducationBookingForm
             ->keyBy('date');
 
         $dayPeriods = collect(CarbonPeriod::create($startDate, $endDate))
-            ->map(fn (Carbon $date): array => [
-                'date' => $date->toDateString(),
-                'period' => $existingPeriods->get($date->toDateString())['period'] ?? BookingDayPeriod::FullDay->value,
-            ])
+            ->map(function (Carbon $date) use ($existingPeriods): array {
+                $existing = $existingPeriods->get($date->toDateString());
+
+                return [
+                    'date' => $date->toDateString(),
+                    'period' => $existing['period'] ?? BookingDayPeriod::FullDay->value,
+                    'time_from' => $existing['time_from'] ?? null,
+                    'time_to' => $existing['time_to'] ?? null,
+                ];
+            })
             ->values()
             ->all();
 
         $set('day_periods', $dayPeriods);
+    }
+
+    /** @return array<int, array{date: string, period: string, time_from: ?string, time_to: ?string}> */
+    public static function loadDayPeriods(EducationBooking $record): array
+    {
+        return $record->dayPeriods()
+            ->get()
+            ->map(fn (EducationBookingDayPeriod $period): array => [
+                'date' => $period->date->toDateString(),
+                'period' => $period->period->value,
+                'time_from' => $period->time_from,
+                'time_to' => $period->time_to,
+            ])
+            ->values()
+            ->all();
+    }
+
+    /** @param  array<int, array<string, mixed>>|null  $items */
+    public static function syncDayPeriods(EducationBooking $record, ?array $items): void
+    {
+        $items = collect($items ?? [])->filter(fn (array $item): bool => filled($item['date'] ?? null));
+
+        $record->dayPeriods()->whereNotIn('date', $items->pluck('date')->all() ?: [''])->delete();
+
+        foreach ($items as $item) {
+            $record->dayPeriods()->updateOrCreate(
+                ['date' => $item['date']],
+                [
+                    'company_id' => $record->company_id,
+                    'period' => $item['period'] ?? BookingDayPeriod::FullDay->value,
+                    'time_from' => $item['time_from'] ?? null,
+                    'time_to' => $item['time_to'] ?? null,
+                ],
+            );
+        }
     }
 }
