@@ -65,6 +65,7 @@ class EducationBookingsTable
             ->filters([
                 BookingFilters::client(),
                 BookingFilters::candidate(),
+                BookingFilters::consultant(),
                 TrashedFilter::make(),
             ])
             ->recordActions([

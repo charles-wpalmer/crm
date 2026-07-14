@@ -71,6 +71,7 @@ class WeeklyBookingsByClient extends BaseWidget
             ->filters([
                 BookingFilters::client(),
                 BookingFilters::candidate(),
+                BookingFilters::consultant(),
             ])
             ->columns([
                 TextColumn::make('candidate_name')
@@ -104,6 +105,7 @@ class WeeklyBookingsByClient extends BaseWidget
         $end = $this->weekEndDate();
 
         return EducationBooking::query()
+            ->visibleToCurrentUser()
             ->whereHas('dayPeriods', fn ($query) => $query->whereBetween('date', [$start->toDateString(), $end->toDateString()]))
             ->with([
                 'dayPeriods' => fn ($query) => $query->whereBetween('date', [$start->toDateString(), $end->toDateString()]),

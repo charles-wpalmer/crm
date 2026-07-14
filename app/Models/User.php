@@ -78,6 +78,11 @@ class User extends Authenticatable implements FilamentUser, PasskeyUser
         return $this->morphTo();
     }
 
+    public function isAdmin(): bool
+    {
+        return $this->hasAnyRole(['admin', 'site_admin']);
+    }
+
     public function canAccessPanel(Panel $panel): bool
     {
         if ($panel->getId() === 'candidate') {
