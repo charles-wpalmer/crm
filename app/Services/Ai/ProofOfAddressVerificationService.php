@@ -5,8 +5,8 @@ namespace App\Services\Ai;
 use App\Ai\Agents\ProofOfAddressParser;
 use App\DTOs\ProofOfAddressExtraction;
 use App\Enums\DocumentType;
-use App\Models\EducationCandidate;
 use App\Services\Concerns\ResolvesAiAttachment;
+use Illuminate\Database\Eloquent\Model;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Str;
 use Laravel\Ai\Responses\StructuredAgentResponse;
@@ -21,12 +21,12 @@ class ProofOfAddressVerificationService
      * document, compare it against their stored address, and persist the
      * outcome on the candidate record.
      */
-    public function verify(EducationCandidate $candidate): bool
+    public function verify(Model $candidate): bool
     {
         $document = $candidate->documents()->where('document_type', DocumentType::ProofOfAddress)->first();
 
         if (! $document) {
-            throw new RuntimeException('EducationCandidate has no proof of address document to verify.');
+            throw new RuntimeException('Candidate has no proof of address document to verify.');
         }
 
         $extraction = $this->parse(Storage::disk('local')->path($document->path));
@@ -64,7 +64,7 @@ class ProofOfAddressVerificationService
         return $extraction;
     }
 
-    private function matches(EducationCandidate $candidate, ProofOfAddressExtraction $extraction): bool
+    private function matches(Model $candidate, ProofOfAddressExtraction $extraction): bool
     {
         $storedPostcode = $this->normalize($candidate->postcode);
         $extractedPostcode = $this->normalize($extraction->postcode);

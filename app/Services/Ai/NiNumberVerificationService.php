@@ -5,8 +5,8 @@ namespace App\Services\Ai;
 use App\Ai\Agents\ProofOfNiParser;
 use App\DTOs\ProofOfNiExtraction;
 use App\Enums\DocumentType;
-use App\Models\EducationCandidate;
 use App\Services\Concerns\ResolvesAiAttachment;
+use Illuminate\Database\Eloquent\Model;
 use Illuminate\Support\Facades\Storage;
 use Laravel\Ai\Responses\StructuredAgentResponse;
 use RuntimeException;
@@ -20,12 +20,12 @@ class NiNumberVerificationService
      * proof of NI document, compare it against their stored NI number, and
      * persist the outcome on the candidate record.
      */
-    public function verify(EducationCandidate $candidate): bool
+    public function verify(Model $candidate): bool
     {
         $document = $candidate->documents()->where('document_type', DocumentType::ProofOfNi)->first();
 
         if (! $document) {
-            throw new RuntimeException('EducationCandidate has no proof of NI document to verify.');
+            throw new RuntimeException('Candidate has no proof of NI document to verify.');
         }
 
         $extraction = $this->parse(Storage::disk('local')->path($document->path));
@@ -57,7 +57,7 @@ class NiNumberVerificationService
         return $extraction;
     }
 
-    private function matches(EducationCandidate $candidate, ProofOfNiExtraction $extraction): bool
+    private function matches(Model $candidate, ProofOfNiExtraction $extraction): bool
     {
         $extractedNi = $this->normalize($extraction->niNumber);
         $storedNi = $this->normalize($candidate->ni_number);

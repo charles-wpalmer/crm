@@ -2,11 +2,12 @@
 
 namespace App\Filament\Resources\EducationBookings;
 
-use App\Models\EducationCandidate;
 use App\Models\EducationClient;
+use App\Models\Industry;
 use App\Models\User;
 use Filament\Tables\Filters\SelectFilter;
 use Illuminate\Database\Eloquent\Builder;
+use Illuminate\Database\Eloquent\Model;
 use Illuminate\Support\Facades\Auth;
 
 class BookingFilters
@@ -31,22 +32,33 @@ class BookingFilters
         return SelectFilter::make('candidate_id')
             ->label('Candidate')
             ->searchable()
-            ->query(fn (Builder $query, array $data): Builder => $query->when(
-                filled($data['value'] ?? null),
-                fn (Builder $query) => $query
-                    ->where('candidate_id', $data['value'])
-                    ->where('candidate_type', EducationCandidate::class)
-            ))
-            ->options(fn (): array => EducationCandidate::query()
-                ->orderBy('first_name')
-                ->get()
-                ->mapWithKeys(function (EducationCandidate $candidate): array {
-                    $name = trim("{$candidate->first_name} {$candidate->last_name}");
+            ->query(function (Builder $query, array $data): Builder {
+                $candidateModelClass = Industry::candidateModelForSlug(active_industry() ?? '');
 
-                    return [$candidate->id => $candidate->trashed() ? "{$name} (deleted)" : $name];
-                })
-                ->toArray()
-            );
+                return $query->when(
+                    filled($data['value'] ?? null) && $candidateModelClass,
+                    fn (Builder $query) => $query
+                        ->where('candidate_id', $data['value'])
+                        ->where('candidate_type', $candidateModelClass)
+                );
+            })
+            ->options(function (): array {
+                $candidateModelClass = Industry::candidateModelForSlug(active_industry() ?? '');
+
+                if (! $candidateModelClass) {
+                    return [];
+                }
+
+                return $candidateModelClass::query()
+                    ->orderBy('first_name')
+                    ->get()
+                    ->mapWithKeys(function (Model $candidate): array {
+                        $name = trim("{$candidate->first_name} {$candidate->last_name}");
+
+                        return [$candidate->id => $candidate->trashed() ? "{$name} (deleted)" : $name];
+                    })
+                    ->toArray();
+            });
     }
 
     public static function consultant(): SelectFilter

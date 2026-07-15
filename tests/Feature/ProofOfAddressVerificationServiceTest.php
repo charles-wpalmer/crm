@@ -29,7 +29,7 @@ test('verify throws when the candidate has no proof of address document', functi
     $candidate = EducationCandidate::factory()->create();
 
     (new ProofOfAddressVerificationService)->verify($candidate);
-})->throws(RuntimeException::class, 'EducationCandidate has no proof of address document to verify.');
+})->throws(RuntimeException::class, 'Candidate has no proof of address document to verify.');
 
 test('verify marks the candidate as matching when the extracted address matches', function () {
     $candidate = EducationCandidate::factory()->create([

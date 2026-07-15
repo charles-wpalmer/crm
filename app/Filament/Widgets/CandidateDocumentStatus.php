@@ -2,7 +2,6 @@
 
 namespace App\Filament\Widgets;
 
-use App\Models\EducationCandidate;
 use App\Services\Education\CandidateDocumentRequirements;
 use Filament\Actions\Action;
 use Filament\Tables\Columns\TextColumn;
@@ -25,7 +24,7 @@ class CandidateDocumentStatus extends TableWidget
     /** @return array<string, array{document_type: string, label: string, description: string, uploaded: bool, path: ?string, url: ?string}> */
     private function rows(): array
     {
-        if (! $this->record instanceof EducationCandidate) {
+        if (! $this->record) {
             return [];
         }
 

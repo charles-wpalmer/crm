@@ -6,7 +6,7 @@ use App\Actions\Bookings\BookingCreated;
 use App\Enums\BookingStatus;
 use App\Filament\Resources\EducationBookings\EducationBookingResource;
 use App\Filament\Resources\EducationBookings\Schemas\EducationBookingForm;
-use App\Models\EducationCandidate;
+use App\Models\Industry;
 use Filament\Resources\Pages\CreateRecord;
 
 class CreateEducationBooking extends CreateRecord
@@ -49,8 +49,10 @@ class CreateEducationBooking extends CreateRecord
     /** @param  array<string, mixed>  $data */
     protected function mutateFormDataBeforeCreate(array $data): array
     {
-        $data['candidate_type'] = EducationCandidate::class;
-        $data['consultant_id'] = EducationCandidate::find($data['candidate_id'] ?? null)?->consultant_id;
+        $candidateModelClass = Industry::candidateModelForSlug(active_industry() ?? '');
+
+        $data['candidate_type'] = $candidateModelClass;
+        $data['consultant_id'] = $candidateModelClass ? $candidateModelClass::find($data['candidate_id'] ?? null)?->consultant_id : null;
 
         return $data;
     }

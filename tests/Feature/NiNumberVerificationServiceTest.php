@@ -29,7 +29,7 @@ test('verify throws when the candidate has no proof of NI document', function ()
     $candidate = EducationCandidate::factory()->create();
 
     (new NiNumberVerificationService)->verify($candidate);
-})->throws(RuntimeException::class, 'EducationCandidate has no proof of NI document to verify.');
+})->throws(RuntimeException::class, 'Candidate has no proof of NI document to verify.');
 
 test('verify marks the candidate as matching when the extracted NI number matches', function () {
     $candidate = EducationCandidate::factory()->create(['ni_number' => 'QQ123456C']);

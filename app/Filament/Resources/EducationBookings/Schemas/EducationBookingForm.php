@@ -6,8 +6,8 @@ use App\Enums\BookingDayPeriod;
 use App\Enums\BookingStatus;
 use App\Models\EducationBooking;
 use App\Models\EducationBookingDayPeriod;
-use App\Models\EducationCandidate;
 use App\Models\EducationClient;
+use App\Models\Industry;
 use App\Models\JobTitle;
 use App\Models\PayRate;
 use App\Services\Booking\BookingOverlap;
@@ -25,6 +25,7 @@ use Filament\Schemas\Components\Section;
 use Filament\Schemas\Components\Utilities\Get;
 use Filament\Schemas\Components\Utilities\Set;
 use Filament\Schemas\Schema;
+use Illuminate\Database\Eloquent\Model;
 use Illuminate\Support\Facades\Auth;
 
 class EducationBookingForm
@@ -72,22 +73,31 @@ class EducationBookingForm
                             ->afterStateUpdated(fn (Set $set, Get $get) => static::applyDefaultRates($set, $get)),
                         Select::make('candidate_id')
                             ->label('Candidate')
-                            ->options(fn (?EducationBooking $record): array => EducationCandidate::query()
-                                ->when(
-                                    ! $record,
-                                    fn ($query) => $query->whereHas(
-                                        'statuses.status',
-                                        fn ($statusQuery) => $statusQuery->where('name', 'Live')
+                            ->options(function (?EducationBooking $record): array {
+                                $candidateModelClass = Industry::candidateModelForSlug(active_industry() ?? '');
+
+                                if (! $candidateModelClass) {
+                                    return [];
+                                }
+
+                                return $candidateModelClass::query()
+                                    ->when(
+                                        ! $record,
+                                        fn ($query) => $query->whereHas(
+                                            'statuses.status',
+                                            fn ($statusQuery) => $statusQuery->where('name', 'Live')
+                                        )
                                     )
-                                )
-                                ->get()
-                                ->mapWithKeys(fn (EducationCandidate $candidate): array => [
-                                    $candidate->id => trim("{$candidate->first_name} {$candidate->last_name}"),
-                                ])
-                                ->toArray()
-                            )
+                                    ->get()
+                                    ->mapWithKeys(fn (Model $candidate): array => [
+                                        $candidate->id => trim("{$candidate->first_name} {$candidate->last_name}"),
+                                    ])
+                                    ->toArray();
+                            })
                             ->getOptionLabelUsing(function (mixed $value): ?string {
-                                $candidate = EducationCandidate::withTrashed()->find($value);
+                                $candidateModelClass = Industry::candidateModelForSlug(active_industry() ?? '');
+
+                                $candidate = $candidateModelClass ? $candidateModelClass::withTrashed()->find($value) : null;
 
                                 if (! $candidate) {
                                     return null;
@@ -131,7 +141,14 @@ class EducationBookingForm
                             )
                             ->rule(function (Get $get, ?EducationBooking $record): Closure {
                                 return function (string $attribute, mixed $value, Closure $fail) use ($get, $record): void {
+                                    $candidateModelClass = Industry::candidateModelForSlug(active_industry() ?? '');
+
+                                    if (! $candidateModelClass) {
+                                        return;
+                                    }
+
                                     $conflicts = BookingOverlap::conflictingDates(
+                                        $candidateModelClass,
                                         $get('candidate_id'),
                                         $value ?? [],
                                         $record?->id,
@@ -266,10 +283,11 @@ class EducationBookingForm
     public static function defaultRates(mixed $candidateId, mixed $clientId, mixed $jobTitleId): array
     {
         $rates = [];
+        $candidateModelClass = Industry::candidateModelForSlug(active_industry() ?? '');
 
-        if (filled($candidateId) && filled($jobTitleId)) {
+        if (filled($candidateId) && filled($jobTitleId) && $candidateModelClass) {
             $payRate = PayRate::query()
-                ->where('model_type', EducationCandidate::class)
+                ->where('model_type', $candidateModelClass)
                 ->where('model_id', $candidateId)
                 ->where('job_title_id', $jobTitleId)
                 ->first();

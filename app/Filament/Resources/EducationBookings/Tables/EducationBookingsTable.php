@@ -5,7 +5,7 @@ namespace App\Filament\Resources\EducationBookings\Tables;
 use App\Enums\BookingStatus;
 use App\Filament\Resources\EducationBookings\BookingFilters;
 use App\Models\EducationBooking;
-use App\Models\EducationCandidate;
+use App\Models\Industry;
 use Filament\Actions\BulkActionGroup;
 use Filament\Actions\DeleteBulkAction;
 use Filament\Actions\EditAction;
@@ -40,9 +40,15 @@ class EducationBookingsTable
                         return $candidate->trashed() ? "{$name} (deleted)" : $name;
                     })
                     ->searchable(query: function (Builder $query, string $search): Builder {
+                        $candidateModelClass = Industry::candidateModelForSlug(active_industry() ?? '');
+
+                        if (! $candidateModelClass) {
+                            return $query;
+                        }
+
                         return $query->orWhereHasMorph(
                             'candidate',
-                            [EducationCandidate::class],
+                            [$candidateModelClass],
                             fn (Builder $query) => $query
                                 ->where('first_name', 'like', "%{$search}%")
                                 ->orWhere('last_name', 'like', "%{$search}%")

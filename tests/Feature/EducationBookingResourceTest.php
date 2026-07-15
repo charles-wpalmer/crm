@@ -4,6 +4,7 @@ use App\Enums\BookingDayPeriod;
 use App\Filament\Resources\EducationBookings\Pages\CreateEducationBooking;
 use App\Filament\Resources\EducationBookings\Pages\EditEducationBooking;
 use App\Filament\Resources\EducationBookings\Pages\ListEducationBookings;
+use App\Filament\Resources\EducationBookings\Schemas\EducationBookingForm;
 use App\Jobs\GenerateBookingConfirmationPdf;
 use App\Jobs\SendBookingConfirmationEmail;
 use App\Jobs\SendClientBookingConfirmationEmail;
@@ -1059,4 +1060,29 @@ test('editing a booking into a conflict with another booking for the same candid
         ])
         ->call('save')
         ->assertHasFormErrors(['day_periods']);
+});
+
+test('the candidate select resolves candidates via the active industry rather than a hardcoded model', function () {
+    assignCandidateStatus($this->candidate, $this->industry, $this->user->company_id, 'Live');
+
+    Livewire::test(CreateEducationBooking::class)
+        ->assertFormFieldExists('candidate_id', function ($field): bool {
+            return array_key_exists($this->candidate->id, $field->getOptions());
+        });
+});
+
+test('candidate pay rate lookups are skipped when the active industry has no registered candidate model', function () {
+    Cache::put("user.{$this->user->id}.active_industry", 'unknown-industry');
+    Cache::forget("user.{$this->user->id}.active_industry_id");
+
+    expect(Industry::candidateModelForSlug(active_industry() ?? ''))->toBeNull();
+
+    // Candidate-side rate keys are omitted entirely since no candidate model could be resolved;
+    // client-side charge rate lookups are unaffected since they don't depend on candidate type.
+    expect(EducationBookingForm::defaultRates($this->candidate->id, $this->client->id, $this->jobTitle->id))
+        ->toBe([
+            'day_charge_rate' => null,
+            'half_day_charge_rate' => null,
+            'hourly_charge_rate' => null,
+        ]);
 });

@@ -101,7 +101,7 @@ class VettingSteps
                 if ($isSecurityChecksStep && $record->refresh()->dnuCandidate()) {
                     Notification::make()
                         ->danger()
-                        ->title('EducationCandidate flagged as DNU')
+                        ->title('Candidate flagged as DNU')
                         ->body('This candidate has failed a required security check and cannot continue through the compliance process.')
                         ->send();
 
@@ -696,7 +696,7 @@ class VettingSteps
                                         static::photoDocument($record)->path,
                                         now()->addMinutes(10)
                                     ),
-                                    alt: 'EducationCandidate photo',
+                                    alt: 'Candidate photo',
                                 )
                                     ->imageHeight(160)
                                     ->imageWidth(160)

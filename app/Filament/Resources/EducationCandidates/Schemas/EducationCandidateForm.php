@@ -506,7 +506,7 @@ class EducationCandidateForm
                                         TextInput::make('country')
                                             ->maxLength(255),
                                         Checkbox::make('consent_to_contact')
-                                            ->label('EducationCandidate consents to us contacting this referee')
+                                            ->label('Candidate consents to us contacting this referee')
                                             ->columnSpanFull(),
                                         Checkbox::make('contact_now')
                                             ->label('Contact this referee now')

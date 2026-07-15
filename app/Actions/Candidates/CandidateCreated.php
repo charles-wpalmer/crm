@@ -2,7 +2,6 @@
 
 namespace App\Actions\Candidates;
 
-use App\Enums\ActivityType;
 use App\Jobs\SendApplicationEmail;
 use App\Models\CandidateStatus;
 use App\Models\EducationApplication;

@@ -4,17 +4,17 @@ namespace App\Services\Booking;
 
 use App\Enums\BookingDayPeriod;
 use App\Models\EducationBookingDayPeriod;
-use App\Models\EducationCandidate;
 use Carbon\Carbon;
 use Illuminate\Support\Collection;
 
 class BookingOverlap
 {
     /**
+     * @param  class-string  $candidateType
      * @param  array<int, array<string, mixed>>  $dayPeriods
      * @return Collection<int, string>
      */
-    public static function conflictingDates(mixed $candidateId, array $dayPeriods, ?int $excludingBookingId = null): Collection
+    public static function conflictingDates(string $candidateType, mixed $candidateId, array $dayPeriods, ?int $excludingBookingId = null): Collection
     {
         $incoming = collect($dayPeriods)
             ->filter(fn (array $entry): bool => filled($entry['date'] ?? null))
@@ -30,9 +30,9 @@ class BookingOverlap
                     $query->orWhereDate('date', $date);
                 }
             })
-            ->whereHas('educationBooking', function ($query) use ($candidateId, $excludingBookingId): void {
+            ->whereHas('educationBooking', function ($query) use ($candidateType, $candidateId, $excludingBookingId): void {
                 $query->where('candidate_id', $candidateId)
-                    ->where('candidate_type', EducationCandidate::class)
+                    ->where('candidate_type', $candidateType)
                     ->when($excludingBookingId, fn ($query) => $query->where('id', '!=', $excludingBookingId));
             })
             ->get();
