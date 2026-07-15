@@ -18,6 +18,7 @@
     </x-filament::tabs>
 
     @if ($activeSection === 'weekly')
+        @livewire(\App\Filament\Resources\Bookings\Widgets\BookingWeekStats::class)
         @livewire(\App\Filament\Resources\Bookings\Widgets\WeeklyBookingsByClient::class)
     @else
         {{ $this->table }}

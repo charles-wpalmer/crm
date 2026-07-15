@@ -13,7 +13,7 @@ class BookingDayPeriods
     /** @return Collection<int, array{date: Carbon, period: BookingDayPeriod, start: string, rate: ?float, hours: ?float, cancelled: bool}> */
     public static function rows(Booking $booking, string $rateType = 'pay'): Collection
     {
-        $rates = self::rates($booking, $rateType);
+        $rates = self::ratesFor($booking, $rateType);
 
         return $booking->dayPeriods->map(fn (BookingDay $dayPeriod): array => [
             'date' => $dayPeriod->date,
@@ -50,7 +50,7 @@ class BookingDayPeriods
     }
 
     /** @return array<string, ?float> */
-    private static function rates(Booking $booking, string $rateType): array
+    public static function ratesFor(Booking $booking, string $rateType): array
     {
         return $rateType === 'charge'
             ? [
