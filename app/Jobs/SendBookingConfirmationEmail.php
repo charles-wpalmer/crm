@@ -5,10 +5,10 @@ namespace App\Jobs;
 use App\Enums\ActivityType;
 use App\Enums\EmailProvider;
 use App\Enums\EmailTemplateType;
-use App\Models\EducationBooking;
+use App\Models\Booking;
 use App\Models\EmailTemplate;
+use App\Services\Booking\BookingDayPeriods;
 use App\Services\Education\BookingConfirmationLink;
-use App\Services\Education\BookingDayPeriods;
 use App\Services\Mail\MailgunMailer;
 use App\Services\Mail\MicrosoftGraphMailer;
 use Illuminate\Contracts\Queue\ShouldQueue;
@@ -25,7 +25,7 @@ class SendBookingConfirmationEmail implements ShouldQueue
     public int $backoff = 60;
 
     public function __construct(
-        public readonly EducationBooking $booking,
+        public readonly Booking $booking,
     ) {}
 
     /**
@@ -33,7 +33,7 @@ class SendBookingConfirmationEmail implements ShouldQueue
      */
     public function handle(): void
     {
-        $candidate = $this->booking->education_candidate;
+        $candidate = $this->booking->candidate;
 
         if (! $candidate?->email) {
             return;
@@ -59,6 +59,7 @@ class SendBookingConfirmationEmail implements ShouldQueue
                 to: $candidate->email,
                 subject: $this->replacePlaceholders($template->subject ?? ''),
                 body: $this->replacePlaceholders($template->body ?? ''),
+                from: $candidate->consultant?->email ?? $candidate->company->defaultFromEmail(),
             );
 
             $candidate->activities()->create([
@@ -76,8 +77,8 @@ class SendBookingConfirmationEmail implements ShouldQueue
 
     private function replacePlaceholders(string $content): string
     {
-        $candidate = $this->booking->education_candidate;
-        $client = $this->booking->education_client;
+        $candidate = $this->booking->candidate;
+        $client = $this->booking->client;
 
         $title = $candidate->title ? rtrim($candidate->title, '.').'.' : '';
         $candidateName = trim(collect([$title, $candidate->first_name, $candidate->last_name])->filter()->implode(' '));

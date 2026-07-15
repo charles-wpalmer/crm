@@ -1,13 +1,13 @@
 <?php
 
+use App\Filament\Resources\Bookings\BookingResource;
+use App\Filament\Resources\EducationCandidates\EducationCandidateResource;
+use App\Models\Booking;
+use App\Models\Client;
 use App\Models\Company;
+use App\Models\EducationCandidate;
 use App\Models\Industry;
 use App\Models\User;
-use App\Models\EducationCandidate;
-use App\Models\EducationBooking;
-use App\Models\EducationClient;
-use App\Filament\Resources\EducationCandidates\EducationCandidateResource;
-use App\Filament\Resources\EducationBookings\EducationBookingResource;
 use Illuminate\Support\Facades\Auth;
 
 test('education candidate and booking resources have correct visibility', function () {
@@ -20,13 +20,13 @@ test('education candidate and booking resources have correct visibility', functi
 
     // Should be hidden because user doesn't have the industry
     expect(EducationCandidateResource::canViewAny())->toBeFalse()
-        ->and(EducationBookingResource::canViewAny())->toBeFalse();
+        ->and(BookingResource::canViewAny())->toBeFalse();
 
     $user->industries()->attach($educationIndustry);
 
     // Should be visible now
     expect(EducationCandidateResource::canViewAny())->toBeTrue()
-        ->and(EducationBookingResource::canViewAny())->toBeTrue();
+        ->and(BookingResource::canViewAny())->toBeTrue();
 });
 
 test('education candidate and booking are scoped to company', function () {
@@ -42,15 +42,16 @@ test('education candidate and booking are scoped to company', function () {
     expect(EducationCandidate::all())->toHaveCount(1)
         ->and(EducationCandidate::first()->id)->toBe($candidate1->id);
 
-    $client1 = EducationClient::factory()->create(['company_id' => $company1->id]);
-    $booking1 = EducationBooking::factory()->create([
+    $client1 = Client::factory()->create(['company_id' => $company1->id]);
+    $booking1 = Booking::factory()->create([
         'company_id' => $company1->id,
-        'education_client_id' => $client1->id,
-        'education_candidate_id' => $candidate1->id,
+        'client_id' => $client1->id,
+        'candidate_id' => $candidate1->id,
+        'candidate_type' => EducationCandidate::class,
     ]);
 
-    $booking2 = EducationBooking::factory()->create(['company_id' => $company2->id]);
+    $booking2 = Booking::factory()->create(['company_id' => $company2->id]);
 
-    expect(EducationBooking::all())->toHaveCount(1)
-        ->and(EducationBooking::first()->id)->toBe($booking1->id);
+    expect(Booking::all())->toHaveCount(1)
+        ->and(Booking::first()->id)->toBe($booking1->id);
 });

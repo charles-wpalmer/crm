@@ -2,9 +2,9 @@
 
 use App\Enums\BookingDayPeriod;
 use App\Filament\Widgets\BookingsPerWeekChart;
-use App\Models\EducationBooking;
+use App\Models\Booking;
+use App\Models\Client;
 use App\Models\EducationCandidate;
-use App\Models\EducationClient;
 use App\Models\JobTitle;
 use App\Models\User;
 use Database\Seeders\RoleSeeder;
@@ -23,7 +23,7 @@ beforeEach(function () {
     $this->company = $this->user->company;
 
     $this->jobTitle = JobTitle::factory()->create(['company_id' => $this->company->id]);
-    $this->client = EducationClient::factory()->create(['company_id' => $this->company->id]);
+    $this->client = Client::factory()->create(['company_id' => $this->company->id]);
     $this->candidate = EducationCandidate::factory()->create(['company_id' => $this->company->id]);
 });
 
@@ -42,7 +42,7 @@ function getChartData(?string $filter = null): array
     return $method->invoke($component->instance());
 }
 
-function addChartDayPeriod(EducationBooking $booking, string $date, BookingDayPeriod $period = BookingDayPeriod::FullDay): void
+function addChartDayPeriod(Booking $booking, string $date, BookingDayPeriod $period = BookingDayPeriod::FullDay): void
 {
     $booking->dayPeriods()->create([
         'company_id' => $booking->company_id,
@@ -72,35 +72,39 @@ test('the time horizon filter changes how many weeks of data are returned', func
 test('it counts distinct bookings per week and excludes weeks outside the selected range', function () {
     $monday = now()->startOfWeek(Carbon::MONDAY);
 
-    $bookingA = EducationBooking::factory()->create([
+    $bookingA = Booking::factory()->create([
         'company_id' => $this->company->id,
-        'education_client_id' => $this->client->id,
-        'education_candidate_id' => $this->candidate->id,
+        'client_id' => $this->client->id,
+        'candidate_id' => $this->candidate->id,
+        'candidate_type' => EducationCandidate::class,
         'job_title_id' => $this->jobTitle->id,
     ]);
     addChartDayPeriod($bookingA, $monday->toDateString());
     addChartDayPeriod($bookingA, $monday->copy()->addDay()->toDateString());
 
-    $bookingB = EducationBooking::factory()->create([
+    $bookingB = Booking::factory()->create([
         'company_id' => $this->company->id,
-        'education_client_id' => $this->client->id,
-        'education_candidate_id' => $this->candidate->id,
+        'client_id' => $this->client->id,
+        'candidate_id' => $this->candidate->id,
+        'candidate_type' => EducationCandidate::class,
         'job_title_id' => $this->jobTitle->id,
     ]);
     addChartDayPeriod($bookingB, $monday->toDateString());
 
-    $futureBooking = EducationBooking::factory()->create([
+    $futureBooking = Booking::factory()->create([
         'company_id' => $this->company->id,
-        'education_client_id' => $this->client->id,
-        'education_candidate_id' => $this->candidate->id,
+        'client_id' => $this->client->id,
+        'candidate_id' => $this->candidate->id,
+        'candidate_type' => EducationCandidate::class,
         'job_title_id' => $this->jobTitle->id,
     ]);
     addChartDayPeriod($futureBooking, $monday->copy()->addWeeks(3)->toDateString());
 
-    $tooFarBooking = EducationBooking::factory()->create([
+    $tooFarBooking = Booking::factory()->create([
         'company_id' => $this->company->id,
-        'education_client_id' => $this->client->id,
-        'education_candidate_id' => $this->candidate->id,
+        'client_id' => $this->client->id,
+        'candidate_id' => $this->candidate->id,
+        'candidate_type' => EducationCandidate::class,
         'job_title_id' => $this->jobTitle->id,
     ]);
     addChartDayPeriod($tooFarBooking, $monday->copy()->addWeeks(20)->toDateString());
@@ -116,18 +120,20 @@ test('it counts distinct bookings per week and excludes weeks outside the select
 test('it excludes day periods belonging to a soft-deleted booking', function () {
     $monday = now()->startOfWeek(Carbon::MONDAY);
 
-    $activeBooking = EducationBooking::factory()->create([
+    $activeBooking = Booking::factory()->create([
         'company_id' => $this->company->id,
-        'education_client_id' => $this->client->id,
-        'education_candidate_id' => $this->candidate->id,
+        'client_id' => $this->client->id,
+        'candidate_id' => $this->candidate->id,
+        'candidate_type' => EducationCandidate::class,
         'job_title_id' => $this->jobTitle->id,
     ]);
     addChartDayPeriod($activeBooking, $monday->toDateString());
 
-    $cancelledBooking = EducationBooking::factory()->create([
+    $cancelledBooking = Booking::factory()->create([
         'company_id' => $this->company->id,
-        'education_client_id' => $this->client->id,
-        'education_candidate_id' => $this->candidate->id,
+        'client_id' => $this->client->id,
+        'candidate_id' => $this->candidate->id,
+        'candidate_type' => EducationCandidate::class,
         'job_title_id' => $this->jobTitle->id,
     ]);
     addChartDayPeriod($cancelledBooking, $monday->toDateString());

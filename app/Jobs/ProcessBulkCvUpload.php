@@ -4,11 +4,11 @@ namespace App\Jobs;
 
 use App\DTOs\CvExtraction;
 use App\Enums\DocumentType;
-use App\Models\EducationCandidate;
 use App\Models\Industry;
 use App\Services\Ai\CvParserService;
 use App\Services\Education\Document;
 use Illuminate\Contracts\Queue\ShouldQueue;
+use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\UniqueConstraintViolationException;
 use Illuminate\Foundation\Queue\Queueable;
 use Illuminate\Support\Facades\Log;
@@ -128,7 +128,7 @@ class ProcessBulkCvUpload implements ShouldQueue
         ]);
     }
 
-    /** @param  class-string<EducationCandidate>  $modelClass */
+    /** @param  class-string<Model>  $modelClass */
     protected function candidateExistsForEmail(string $modelClass, string $email): bool
     {
         return $modelClass::withTrashed()
@@ -137,7 +137,7 @@ class ProcessBulkCvUpload implements ShouldQueue
             ->exists();
     }
 
-    private function createEmploymentHistories(EducationCandidate $candidate, CvExtraction $extraction): void
+    private function createEmploymentHistories(Model $candidate, CvExtraction $extraction): void
     {
         $histories = collect($extraction->employmentHistory)
             ->filter(fn (array $entry): bool => filled($entry['companyName'] ?? null) && filled($entry['jobTitle'] ?? null))

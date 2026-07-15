@@ -5,11 +5,11 @@ namespace App\Jobs;
 use App\Enums\ActivityType;
 use App\Enums\EmailProvider;
 use App\Enums\EmailTemplateType;
+use App\Models\Booking;
 use App\Models\ClientContact;
-use App\Models\EducationBooking;
 use App\Models\EmailTemplate;
+use App\Services\Booking\BookingDayPeriods;
 use App\Services\Education\BookingConfirmationLink;
-use App\Services\Education\BookingDayPeriods;
 use App\Services\Mail\MailgunMailer;
 use App\Services\Mail\MicrosoftGraphMailer;
 use Illuminate\Contracts\Queue\ShouldQueue;
@@ -26,7 +26,7 @@ class SendClientBookingConfirmationEmail implements ShouldQueue
     public int $backoff = 60;
 
     public function __construct(
-        public readonly EducationBooking $booking,
+        public readonly Booking $booking,
     ) {}
 
     /**
@@ -34,7 +34,7 @@ class SendClientBookingConfirmationEmail implements ShouldQueue
      */
     public function handle(): void
     {
-        $client = $this->booking->education_client;
+        $client = $this->booking->client;
         $contact = $this->recipientContact();
 
         if (! $client || ! $contact?->email) {
@@ -61,6 +61,7 @@ class SendClientBookingConfirmationEmail implements ShouldQueue
                 to: $contact->email,
                 subject: $this->replacePlaceholders($template->subject ?? '', $contact),
                 body: $this->replacePlaceholders($template->body ?? '', $contact),
+                from: $client->consultant?->email ?? $client->company->defaultFromEmail(),
             );
 
             $client->activities()->create([
@@ -78,7 +79,7 @@ class SendClientBookingConfirmationEmail implements ShouldQueue
 
     private function recipientContact(): ?ClientContact
     {
-        $client = $this->booking->education_client;
+        $client = $this->booking->client;
 
         if (! $client) {
             return null;
@@ -90,8 +91,8 @@ class SendClientBookingConfirmationEmail implements ShouldQueue
 
     private function replacePlaceholders(string $content, ClientContact $contact): string
     {
-        $candidate = $this->booking->education_candidate;
-        $client = $this->booking->education_client;
+        $candidate = $this->booking->candidate;
+        $client = $this->booking->client;
 
         $contactName = trim(collect([$contact->title, $contact->first_name, $contact->last_name])->filter()->implode(' '));
 

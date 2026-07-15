@@ -2,7 +2,8 @@
 
 namespace Database\Seeders;
 
-use Illuminate\Database\Console\Seeds\WithoutModelEvents;
+use App\Models\Client;
+use App\Models\Industry;
 use Illuminate\Database\Seeder;
 
 class IndustrySeeder extends Seeder
@@ -12,10 +13,10 @@ class IndustrySeeder extends Seeder
      */
     public function run(): void
     {
-        \App\Models\Industry::create([
+        Industry::create([
             'name' => 'Education',
             'slug' => 'education',
-            'clientable_type' => \App\Models\EducationClient::class,
+            'clientable_type' => Client::class,
         ]);
     }
 }

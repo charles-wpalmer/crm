@@ -2,9 +2,9 @@
 
 namespace Database\Factories;
 
+use App\Models\Client;
 use App\Models\ClientContact;
 use App\Models\Company;
-use App\Models\EducationClient;
 use Illuminate\Database\Eloquent\Factories\Factory;
 
 /**
@@ -21,7 +21,7 @@ class ClientContactFactory extends Factory
     {
         return [
             'company_id' => Company::factory(),
-            'education_client_id' => EducationClient::factory(),
+            'client_id' => Client::factory(),
             'first_name' => $this->faker->firstName(),
             'last_name' => $this->faker->lastName(),
             'email' => $this->faker->unique()->safeEmail(),

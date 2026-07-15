@@ -31,16 +31,16 @@ class ClientContact extends Model
     {
         static::saving(function (ClientContact $contact): void {
             if ($contact->main_contact) {
-                static::where('education_client_id', $contact->education_client_id)
+                static::where('client_id', $contact->client_id)
                     ->when($contact->exists, fn ($query) => $query->whereKeyNot($contact->getKey()))
                     ->update(['main_contact' => false]);
             }
         });
     }
 
-    public function educationClient(): BelongsTo
+    public function client(): BelongsTo
     {
-        return $this->belongsTo(EducationClient::class);
+        return $this->belongsTo(Client::class);
     }
 
     public function jobTitle(): BelongsTo

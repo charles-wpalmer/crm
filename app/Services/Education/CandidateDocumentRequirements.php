@@ -2,14 +2,14 @@
 
 namespace App\Services\Education;
 
-use App\Models\EducationCandidate;
+use Illuminate\Database\Eloquent\Model;
 
 class CandidateDocumentRequirements
 {
     private const string GET_DBS_URL = 'https://www.hr-platform.co.uk/individual/application-login/?oo5cmxwZZpKlDaAJsRQwuW5kwPSbJcpenhQ0jtA2nYJG7djU06QdfTBNKOJlBWY97U7ETKgKu4t0%2BzZZEKG4qMqhggknGonub5UYB0YG0rL5d1LwXgaeJZr2gIfegvXtvhL8jCnjUWWs4yVQcKvxUhu0gctiD7hHaBWpsSteUWGDq%2BUGkNNzHPqHGqPenD5K4TjY7L26P7mYOq%2FAPj%2F8WQ%3D%3D';
 
     /** @return array<string, array{document_type: string, label: string, description: string, uploaded: bool, path: ?string, url: ?string}> */
-    public static function for(EducationCandidate $candidate, bool $includeGetDbsAction = true): array
+    public static function for(Model $candidate, bool $includeGetDbsAction = true): array
     {
         $existing = $candidate->documents()->get()->keyBy(fn ($document) => $document->document_type->value);
 

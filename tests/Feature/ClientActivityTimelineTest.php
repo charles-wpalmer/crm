@@ -1,14 +1,16 @@
 <?php
 
-use App\Filament\Resources\EducationClients\Pages\EditEducationClient;
+use App\Filament\Resources\Clients\Pages\EditClient;
 use App\Filament\Widgets\ClientActivityTimeline;
+use App\Models\Client;
 use App\Models\ClientActivity;
-use App\Models\EducationClient;
 use App\Models\User;
+use Database\Seeders\RoleSeeder;
 use Illuminate\Support\Facades\Cache;
 use Livewire\Livewire;
 
 beforeEach(function () {
+    $this->seed(RoleSeeder::class);
     $this->user = User::factory()->create();
     $this->actingAs($this->user);
     Cache::put("user.{$this->user->id}.active_industry", 'education');
@@ -16,14 +18,14 @@ beforeEach(function () {
 });
 
 test('activity timeline widget renders', function () {
-    $client = EducationClient::factory()->create(['company_id' => $this->user->company_id]);
+    $client = Client::factory()->create(['company_id' => $this->user->company_id]);
 
     Livewire::test(ClientActivityTimeline::class, ['record' => $client])
         ->assertSuccessful();
 });
 
 test('activity can be logged via action', function () {
-    $client = EducationClient::factory()->create(['company_id' => $this->user->company_id]);
+    $client = Client::factory()->create(['company_id' => $this->user->company_id]);
 
     Livewire::test(ClientActivityTimeline::class, ['record' => $client])
         ->callTableAction('logActivity', data: [
@@ -37,12 +39,12 @@ test('activity can be logged via action', function () {
     expect($activity->note)->toBe('Called client, left voicemail');
     expect($activity->type->value)->toBe('call');
     expect($activity->user_id)->toBe($this->user->id);
-    expect($activity->model_type)->toBe(EducationClient::class);
+    expect($activity->model_type)->toBe(Client::class);
     expect($activity->model_id)->toBe($client->id);
 });
 
 test('activity action requires type and note', function () {
-    $client = EducationClient::factory()->create(['company_id' => $this->user->company_id]);
+    $client = Client::factory()->create(['company_id' => $this->user->company_id]);
 
     Livewire::test(ClientActivityTimeline::class, ['record' => $client])
         ->callTableAction('logActivity', data: [])
@@ -50,7 +52,7 @@ test('activity action requires type and note', function () {
 });
 
 test('activities are paginated', function () {
-    $client = EducationClient::factory()->create(['company_id' => $this->user->company_id]);
+    $client = Client::factory()->create(['company_id' => $this->user->company_id]);
 
     foreach (range(1, 12) as $i) {
         $client->activities()->create([
@@ -67,8 +69,8 @@ test('activities are paginated', function () {
 });
 
 test('activity tab renders on edit page', function () {
-    $client = EducationClient::factory()->create(['company_id' => $this->user->company_id]);
+    $client = Client::factory()->create(['company_id' => $this->user->company_id]);
 
-    Livewire::test(EditEducationClient::class, ['record' => $client->getRouteKey()])
+    Livewire::test(EditClient::class, ['record' => $client->getRouteKey()])
         ->assertSuccessful();
 });

@@ -18,7 +18,7 @@ class ApplicationCompleted
             'user_id' => $candidate->consultant_id ?? auth()->id(),
             'type' => ActivityType::Note,
             'note' => 'Application pack completed',
-            'body' => 'EducationCandidate has completed the Application pack.',
+            'body' => 'Candidate has completed the Application pack.',
             'contacted' => true,
         ]);
     }

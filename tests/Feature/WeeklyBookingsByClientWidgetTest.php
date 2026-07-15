@@ -1,12 +1,12 @@
 <?php
 
 use App\Enums\BookingDayPeriod;
-use App\Filament\Resources\EducationBookings\EducationBookingResource;
-use App\Filament\Resources\EducationBookings\Pages\ListEducationBookings;
-use App\Filament\Resources\EducationBookings\Widgets\WeeklyBookingsByClient;
-use App\Models\EducationBooking;
+use App\Filament\Resources\Bookings\BookingResource;
+use App\Filament\Resources\Bookings\Pages\ListBookings;
+use App\Filament\Resources\Bookings\Widgets\WeeklyBookingsByClient;
+use App\Models\Booking;
+use App\Models\Client;
 use App\Models\EducationCandidate;
-use App\Models\EducationClient;
 use App\Models\JobTitle;
 use App\Models\User;
 use Database\Seeders\RoleSeeder;
@@ -25,7 +25,7 @@ beforeEach(function () {
     $this->company = $this->user->company;
 
     $this->jobTitle = JobTitle::factory()->create(['company_id' => $this->company->id]);
-    $this->client = EducationClient::factory()->create(['company_id' => $this->company->id, 'name' => 'Ashlawn School']);
+    $this->client = Client::factory()->create(['company_id' => $this->company->id, 'name' => 'Ashlawn School']);
     $this->candidate = EducationCandidate::factory()->create([
         'company_id' => $this->company->id,
         'first_name' => 'Stephen',
@@ -33,7 +33,7 @@ beforeEach(function () {
     ]);
 });
 
-function bookingWithDayPeriod(EducationBooking $booking, string $date, BookingDayPeriod $period = BookingDayPeriod::FullDay): void
+function bookingWithDayPeriod(Booking $booking, string $date, BookingDayPeriod $period = BookingDayPeriod::FullDay): void
 {
     $booking->dayPeriods()->create([
         'company_id' => $booking->company_id,
@@ -51,10 +51,11 @@ test('the widget defaults to the current monday-to-sunday week', function () {
 test('it shows bookings for the current week, grouped by client', function () {
     $monday = now()->startOfWeek(Carbon::MONDAY);
 
-    $booking = EducationBooking::factory()->create([
+    $booking = Booking::factory()->create([
         'company_id' => $this->company->id,
-        'education_client_id' => $this->client->id,
-        'education_candidate_id' => $this->candidate->id,
+        'client_id' => $this->client->id,
+        'candidate_id' => $this->candidate->id,
+        'candidate_type' => EducationCandidate::class,
         'job_title_id' => $this->jobTitle->id,
     ]);
 
@@ -72,10 +73,11 @@ test('it shows bookings for the current week, grouped by client', function () {
 test('each row links through to the booking edit page', function () {
     $monday = now()->startOfWeek(Carbon::MONDAY);
 
-    $booking = EducationBooking::factory()->create([
+    $booking = Booking::factory()->create([
         'company_id' => $this->company->id,
-        'education_client_id' => $this->client->id,
-        'education_candidate_id' => $this->candidate->id,
+        'client_id' => $this->client->id,
+        'candidate_id' => $this->candidate->id,
+        'candidate_type' => EducationCandidate::class,
         'job_title_id' => $this->jobTitle->id,
     ]);
     bookingWithDayPeriod($booking, $monday->toDateString());
@@ -83,46 +85,49 @@ test('each row links through to the booking edit page', function () {
     $html = Livewire::test(WeeklyBookingsByClient::class)->html();
 
     expect($html)->toContain(
-        EducationBookingResource::getUrl('edit', ['record' => $booking])
+        BookingResource::getUrl('edit', ['record' => $booking])
     );
 });
 
 test('the weekly table can be filtered by client and by candidate', function () {
     $monday = now()->startOfWeek(Carbon::MONDAY);
 
-    $otherClient = EducationClient::factory()->create(['company_id' => $this->company->id]);
+    $otherClient = Client::factory()->create(['company_id' => $this->company->id]);
     $otherCandidate = EducationCandidate::factory()->create(['company_id' => $this->company->id]);
 
-    $matchingBooking = EducationBooking::factory()->create([
+    $matchingBooking = Booking::factory()->create([
         'company_id' => $this->company->id,
-        'education_client_id' => $this->client->id,
-        'education_candidate_id' => $this->candidate->id,
+        'client_id' => $this->client->id,
+        'candidate_id' => $this->candidate->id,
+        'candidate_type' => EducationCandidate::class,
         'job_title_id' => $this->jobTitle->id,
     ]);
     bookingWithDayPeriod($matchingBooking, $monday->toDateString());
 
-    $otherClientBooking = EducationBooking::factory()->create([
+    $otherClientBooking = Booking::factory()->create([
         'company_id' => $this->company->id,
-        'education_client_id' => $otherClient->id,
-        'education_candidate_id' => $this->candidate->id,
+        'client_id' => $otherClient->id,
+        'candidate_id' => $this->candidate->id,
+        'candidate_type' => EducationCandidate::class,
         'job_title_id' => $this->jobTitle->id,
     ]);
     bookingWithDayPeriod($otherClientBooking, $monday->toDateString());
 
-    $otherCandidateBooking = EducationBooking::factory()->create([
+    $otherCandidateBooking = Booking::factory()->create([
         'company_id' => $this->company->id,
-        'education_client_id' => $this->client->id,
-        'education_candidate_id' => $otherCandidate->id,
+        'client_id' => $this->client->id,
+        'candidate_id' => $otherCandidate->id,
+        'candidate_type' => EducationCandidate::class,
         'job_title_id' => $this->jobTitle->id,
     ]);
     bookingWithDayPeriod($otherCandidateBooking, $monday->toDateString());
 
     Livewire::test(WeeklyBookingsByClient::class)
-        ->filterTable('education_client_id', $this->client->id)
+        ->filterTable('client_id', $this->client->id)
         ->assertCanSeeTableRecords([$matchingBooking, $otherCandidateBooking])
         ->assertCanNotSeeTableRecords([$otherClientBooking])
-        ->removeTableFilter('education_client_id')
-        ->filterTable('education_candidate_id', $this->candidate->id)
+        ->removeTableFilter('client_id')
+        ->filterTable('candidate_id', $this->candidate->id)
         ->assertCanSeeTableRecords([$matchingBooking, $otherClientBooking])
         ->assertCanNotSeeTableRecords([$otherCandidateBooking]);
 });
@@ -130,18 +135,20 @@ test('the weekly table can be filtered by client and by candidate', function () 
 test('it excludes bookings outside the selected week', function () {
     $monday = now()->startOfWeek(Carbon::MONDAY);
 
-    $thisWeekBooking = EducationBooking::factory()->create([
+    $thisWeekBooking = Booking::factory()->create([
         'company_id' => $this->company->id,
-        'education_client_id' => $this->client->id,
-        'education_candidate_id' => $this->candidate->id,
+        'client_id' => $this->client->id,
+        'candidate_id' => $this->candidate->id,
+        'candidate_type' => EducationCandidate::class,
         'job_title_id' => $this->jobTitle->id,
     ]);
     bookingWithDayPeriod($thisWeekBooking, $monday->toDateString());
 
-    $nextWeekBooking = EducationBooking::factory()->create([
+    $nextWeekBooking = Booking::factory()->create([
         'company_id' => $this->company->id,
-        'education_client_id' => $this->client->id,
-        'education_candidate_id' => $this->candidate->id,
+        'client_id' => $this->client->id,
+        'candidate_id' => $this->candidate->id,
+        'candidate_type' => EducationCandidate::class,
         'job_title_id' => $this->jobTitle->id,
     ]);
     bookingWithDayPeriod($nextWeekBooking, $monday->copy()->addWeek()->toDateString());
@@ -155,26 +162,29 @@ test('it excludes bookings outside the selected week', function () {
 test('previous week, next week, and current week navigation actually change which bookings the table shows', function () {
     $monday = now()->startOfWeek(Carbon::MONDAY);
 
-    $thisWeekBooking = EducationBooking::factory()->create([
+    $thisWeekBooking = Booking::factory()->create([
         'company_id' => $this->company->id,
-        'education_client_id' => $this->client->id,
-        'education_candidate_id' => $this->candidate->id,
+        'client_id' => $this->client->id,
+        'candidate_id' => $this->candidate->id,
+        'candidate_type' => EducationCandidate::class,
         'job_title_id' => $this->jobTitle->id,
     ]);
     bookingWithDayPeriod($thisWeekBooking, $monday->toDateString());
 
-    $nextWeekBooking = EducationBooking::factory()->create([
+    $nextWeekBooking = Booking::factory()->create([
         'company_id' => $this->company->id,
-        'education_client_id' => $this->client->id,
-        'education_candidate_id' => $this->candidate->id,
+        'client_id' => $this->client->id,
+        'candidate_id' => $this->candidate->id,
+        'candidate_type' => EducationCandidate::class,
         'job_title_id' => $this->jobTitle->id,
     ]);
     bookingWithDayPeriod($nextWeekBooking, $monday->copy()->addWeek()->toDateString());
 
-    $previousWeekBooking = EducationBooking::factory()->create([
+    $previousWeekBooking = Booking::factory()->create([
         'company_id' => $this->company->id,
-        'education_client_id' => $this->client->id,
-        'education_candidate_id' => $this->candidate->id,
+        'client_id' => $this->client->id,
+        'candidate_id' => $this->candidate->id,
+        'candidate_type' => EducationCandidate::class,
         'job_title_id' => $this->jobTitle->id,
     ]);
     bookingWithDayPeriod($previousWeekBooking, $monday->copy()->subWeek()->toDateString());
@@ -201,10 +211,11 @@ test('the day columns show the correct booked days after switching weeks, not th
     $monday = now()->startOfWeek(Carbon::MONDAY);
     $nextMonday = $monday->copy()->addWeek();
 
-    $booking = EducationBooking::factory()->create([
+    $booking = Booking::factory()->create([
         'company_id' => $this->company->id,
-        'education_client_id' => $this->client->id,
-        'education_candidate_id' => $this->candidate->id,
+        'client_id' => $this->client->id,
+        'candidate_id' => $this->candidate->id,
+        'candidate_type' => EducationCandidate::class,
         'job_title_id' => $this->jobTitle->id,
     ]);
     bookingWithDayPeriod($booking, $nextMonday->toDateString());
@@ -221,10 +232,11 @@ test('the day columns show the correct booked days after switching weeks, not th
 test('it labels soft-deleted clients and candidates', function () {
     $monday = now()->startOfWeek(Carbon::MONDAY);
 
-    $booking = EducationBooking::factory()->create([
+    $booking = Booking::factory()->create([
         'company_id' => $this->company->id,
-        'education_client_id' => $this->client->id,
-        'education_candidate_id' => $this->candidate->id,
+        'client_id' => $this->client->id,
+        'candidate_id' => $this->candidate->id,
+        'candidate_type' => EducationCandidate::class,
         'job_title_id' => $this->jobTitle->id,
     ]);
     bookingWithDayPeriod($booking, $monday->toDateString());
@@ -237,19 +249,119 @@ test('it labels soft-deleted clients and candidates', function () {
 });
 
 test('the bookings list page renders successfully with the weekly widget', function () {
-    Livewire::test(ListEducationBookings::class)
+    Livewire::test(ListBookings::class)
         ->assertSuccessful();
 });
 
-test('the list page defaults to the weekly section and can switch to the all section showing the standard bookings table', function () {
-    $booking = EducationBooking::factory()->create([
+test('an unbooked day icon with no booking the day before links through to the create page prefilled with candidate, client, job title and that date', function () {
+    $monday = now()->startOfWeek(Carbon::MONDAY);
+
+    $booking = Booking::factory()->create([
         'company_id' => $this->company->id,
-        'education_client_id' => $this->client->id,
-        'education_candidate_id' => $this->candidate->id,
+        'client_id' => $this->client->id,
+        'candidate_id' => $this->candidate->id,
+        'candidate_type' => EducationCandidate::class,
+        'job_title_id' => $this->jobTitle->id,
+    ]);
+    bookingWithDayPeriod($booking, $monday->toDateString());
+
+    $html = Livewire::test(WeeklyBookingsByClient::class)->html();
+
+    // Thursday (offset 3): Wednesday (offset 2) is unbooked, so this should still create.
+    $quickAddUrl = BookingResource::getUrl('create', [
+        'candidate_id' => $this->candidate->id,
+        'client_id' => $this->client->id,
+        'job_title_id' => $this->jobTitle->id,
+        'start_date' => $monday->copy()->addDays(3)->toDateString(),
+    ]);
+
+    expect($html)->toContain(e($quickAddUrl));
+});
+
+test('an unbooked day icon immediately after a booked day links through to the edit page for that booking instead of create', function () {
+    $monday = now()->startOfWeek(Carbon::MONDAY);
+
+    $booking = Booking::factory()->create([
+        'company_id' => $this->company->id,
+        'client_id' => $this->client->id,
+        'candidate_id' => $this->candidate->id,
+        'candidate_type' => EducationCandidate::class,
+        'job_title_id' => $this->jobTitle->id,
+    ]);
+    bookingWithDayPeriod($booking, $monday->toDateString());
+
+    $html = Livewire::test(WeeklyBookingsByClient::class)->html();
+
+    $editUrl = BookingResource::getUrl('edit', ['record' => $booking]);
+    $createUrlForTuesday = BookingResource::getUrl('create', [
+        'candidate_id' => $this->candidate->id,
+        'client_id' => $this->client->id,
+        'job_title_id' => $this->jobTitle->id,
+        'start_date' => $monday->copy()->addDay()->toDateString(),
+    ]);
+
+    expect($html)->toContain(e($editUrl))
+        ->and($html)->not->toContain(e($createUrlForTuesday));
+});
+
+test('mondays unbooked icon always links to create since there is no visible previous day in the row', function () {
+    $monday = now()->startOfWeek(Carbon::MONDAY);
+
+    $thisWeekBooking = Booking::factory()->create([
+        'company_id' => $this->company->id,
+        'client_id' => $this->client->id,
+        'candidate_id' => $this->candidate->id,
+        'candidate_type' => EducationCandidate::class,
+        'job_title_id' => $this->jobTitle->id,
+    ]);
+    bookingWithDayPeriod($thisWeekBooking, $monday->copy()->addDay()->toDateString());
+
+    $html = Livewire::test(WeeklyBookingsByClient::class)->html();
+
+    $createUrlForMonday = BookingResource::getUrl('create', [
+        'candidate_id' => $this->candidate->id,
+        'client_id' => $this->client->id,
+        'job_title_id' => $this->jobTitle->id,
+        'start_date' => $monday->toDateString(),
+    ]);
+
+    expect($html)->toContain(e($createUrlForMonday));
+});
+
+test('a booked day icon does not have a quick-add link', function () {
+    $monday = now()->startOfWeek(Carbon::MONDAY);
+
+    $booking = Booking::factory()->create([
+        'company_id' => $this->company->id,
+        'client_id' => $this->client->id,
+        'candidate_id' => $this->candidate->id,
+        'candidate_type' => EducationCandidate::class,
+        'job_title_id' => $this->jobTitle->id,
+    ]);
+    bookingWithDayPeriod($booking, $monday->toDateString());
+
+    $html = Livewire::test(WeeklyBookingsByClient::class)->html();
+
+    $bookedDayUrl = BookingResource::getUrl('create', [
+        'candidate_id' => $this->candidate->id,
+        'client_id' => $this->client->id,
+        'job_title_id' => $this->jobTitle->id,
+        'start_date' => $monday->toDateString(),
+    ]);
+
+    expect($html)->not->toContain(e($bookedDayUrl));
+});
+
+test('the list page defaults to the weekly section and can switch to the all section showing the standard bookings table', function () {
+    $booking = Booking::factory()->create([
+        'company_id' => $this->company->id,
+        'client_id' => $this->client->id,
+        'candidate_id' => $this->candidate->id,
+        'candidate_type' => EducationCandidate::class,
         'job_title_id' => $this->jobTitle->id,
     ]);
 
-    Livewire::test(ListEducationBookings::class)
+    Livewire::test(ListBookings::class)
         ->assertSet('activeSection', 'weekly')
         ->assertSuccessful()
         ->set('activeSection', 'all')

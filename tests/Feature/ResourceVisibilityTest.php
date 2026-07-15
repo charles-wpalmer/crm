@@ -1,18 +1,18 @@
 <?php
 
+use App\Filament\Pages\Dashboard;
+use App\Filament\Resources\Clients\ClientResource;
 use App\Filament\Widgets\NoIndustryWidget;
 use App\Models\Company;
 use App\Models\Industry;
 use App\Models\User;
-use App\Filament\Resources\EducationClients\EducationClientResource;
-use App\Filament\Pages\Dashboard;
 use Illuminate\Support\Facades\Auth;
 
 test('education client resource is hidden for user without company', function () {
     $user = User::factory()->create(['company_id' => null]);
     Auth::login($user);
 
-    expect(EducationClientResource::canViewAny())->toBeFalse();
+    expect(ClientResource::canViewAny())->toBeFalse();
 });
 
 test('education client resource is hidden for user whose company lacks education industry', function () {
@@ -20,7 +20,7 @@ test('education client resource is hidden for user whose company lacks education
     $user = User::factory()->create(['company_id' => $company->id]);
     Auth::login($user);
 
-    expect(EducationClientResource::canViewAny())->toBeFalse();
+    expect(ClientResource::canViewAny())->toBeFalse();
 });
 
 test('education client resource is visible for user whose company has education industry', function () {
@@ -32,7 +32,7 @@ test('education client resource is visible for user whose company has education 
     $user->industries()->attach($educationIndustry);
     Auth::login($user);
 
-    expect(EducationClientResource::canViewAny())->toBeTrue();
+    expect(ClientResource::canViewAny())->toBeTrue();
 });
 
 test('education client resource is hidden for user whose company has education industry but user does not', function () {
@@ -44,7 +44,7 @@ test('education client resource is hidden for user whose company has education i
     // User does NOT have the industry attached
     Auth::login($user);
 
-    expect(EducationClientResource::canViewAny())->toBeFalse();
+    expect(ClientResource::canViewAny())->toBeFalse();
 });
 
 test('education dashboard is visible for user whose only industry is education', function () {

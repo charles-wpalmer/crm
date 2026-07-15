@@ -2,15 +2,15 @@
 
 namespace App\Services\Education;
 
-use App\Models\EducationCandidate;
 use App\Models\Industry;
+use Illuminate\Database\Eloquent\Model;
 use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Str;
 
 class Document
 {
-    public static function upload(UploadedFile $file, EducationCandidate $candidate, ?string $prefix = null): string
+    public static function upload(UploadedFile $file, Model $candidate, ?string $prefix = null): string
     {
         return $file->storeAs(
             self::directoryFor($candidate),
@@ -18,7 +18,7 @@ class Document
         );
     }
 
-    public static function move(string $existingPath, EducationCandidate $candidate, ?string $prefix = null, string $disk = 'local'): string
+    public static function move(string $existingPath, Model $candidate, ?string $prefix = null, string $disk = 'local'): string
     {
         $newPath = self::directoryFor($candidate).'/'.self::prefixedFilename(basename($existingPath), $prefix);
 
@@ -27,7 +27,7 @@ class Document
         return $newPath;
     }
 
-    public static function putGenerated(string $contents, EducationCandidate $candidate, string $filename, string $subdirectory): string
+    public static function putGenerated(string $contents, Model $candidate, string $filename, string $subdirectory): string
     {
         $path = self::directoryFor($candidate)."/{$subdirectory}/{$filename}";
 
@@ -36,7 +36,7 @@ class Document
         return $path;
     }
 
-    private static function directoryFor(EducationCandidate $candidate): string
+    private static function directoryFor(Model $candidate): string
     {
         $companyName = Str::slug($candidate->company?->name) ?: $candidate->company_id;
         $industryName = Str::slug(self::industryNameFor($candidate)) ?: 'unknown-industry';
@@ -49,7 +49,7 @@ class Document
         return $prefix ? "{$prefix}-{$filename}" : $filename;
     }
 
-    private static function industryNameFor(EducationCandidate $candidate): ?string
+    private static function industryNameFor(Model $candidate): ?string
     {
         $slug = Industry::slugForCandidateModel($candidate::class);
 

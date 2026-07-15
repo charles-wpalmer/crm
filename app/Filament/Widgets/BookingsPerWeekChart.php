@@ -2,7 +2,7 @@
 
 namespace App\Filament\Widgets;
 
-use App\Models\EducationBookingDayPeriod;
+use App\Models\BookingDay;
 use Filament\Widgets\ChartWidget;
 use Illuminate\Support\Carbon;
 
@@ -59,10 +59,10 @@ class BookingsPerWeekChart extends ChartWidget
         $weekStart = now()->startOfWeek(Carbon::MONDAY);
         $rangeEnd = $weekStart->copy()->addWeeks($weeksAhead)->subDay();
 
-        $dayPeriods = EducationBookingDayPeriod::query()
-            ->whereHas('educationBooking', fn ($query) => $query->visibleToCurrentUser())
+        $dayPeriods = BookingDay::query()
+            ->whereHas('booking', fn ($query) => $query->visibleToCurrentUser())
             ->whereBetween('date', [$weekStart->toDateString(), $rangeEnd->toDateString()])
-            ->get(['education_booking_id', 'date']);
+            ->get(['booking_id', 'date']);
 
         $labels = [];
         $counts = [];
@@ -74,8 +74,8 @@ class BookingsPerWeekChart extends ChartWidget
             $labels[] = $start->format('d M');
 
             $counts[] = $dayPeriods
-                ->filter(fn (EducationBookingDayPeriod $dayPeriod): bool => $dayPeriod->date->betweenIncluded($start, $end))
-                ->pluck('education_booking_id')
+                ->filter(fn (BookingDay $dayPeriod): bool => $dayPeriod->date->betweenIncluded($start, $end))
+                ->pluck('booking_id')
                 ->unique()
                 ->count();
         }
