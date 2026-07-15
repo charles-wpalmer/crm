@@ -1,9 +1,9 @@
 <?php
 
-use App\Filament\Resources\EducationClients\Pages\EditEducationClient;
-use App\Filament\Resources\EducationClients\Pages\ListEducationClients;
+use App\Filament\Resources\Clients\Pages\EditClient;
+use App\Filament\Resources\Clients\Pages\ListClients;
+use App\Models\Client;
 use App\Models\ClientContact;
-use App\Models\EducationClient;
 use App\Models\Industry;
 use App\Models\User;
 use Database\Seeders\RoleSeeder;
@@ -21,28 +21,28 @@ beforeEach(function () {
 });
 
 test('creating a client requires a name', function () {
-    Livewire::test(ListEducationClients::class)
+    Livewire::test(ListClients::class)
         ->callAction('create', data: ['name' => ''])
         ->assertHasActionErrors(['name']);
 
-    expect(EducationClient::where('name', '')->exists())->toBeFalse();
+    expect(Client::where('name', '')->exists())->toBeFalse();
 });
 
 test('creating a client with just a name succeeds', function () {
-    Livewire::test(ListEducationClients::class)
+    Livewire::test(ListClients::class)
         ->callAction('create', data: ['name' => 'Applebough Primary School'])
         ->assertHasNoActionErrors();
 
-    expect(EducationClient::where('name', 'Applebough Primary School')->exists())->toBeTrue();
+    expect(Client::where('name', 'Applebough Primary School')->exists())->toBeTrue();
 });
 
 test('client details can be filled in later via the edit page', function () {
-    $client = EducationClient::factory()->create([
+    $client = Client::factory()->create([
         'name' => 'Applebough Primary School',
         'company_id' => $this->user->company_id,
     ]);
 
-    Livewire::test(EditEducationClient::class, ['record' => $client->id])
+    Livewire::test(EditClient::class, ['record' => $client->id])
         ->fillForm([
             'client_type' => 'School',
             'address' => '123 Example Road',
@@ -66,9 +66,9 @@ test('a consultant can be assigned to a client via the edit page', function () {
     $consultant->assignRole('consultant');
     $consultant->industries()->attach(Industry::where('slug', 'education')->sole());
 
-    $client = EducationClient::factory()->create(['company_id' => $this->user->company_id]);
+    $client = Client::factory()->create(['company_id' => $this->user->company_id]);
 
-    Livewire::test(EditEducationClient::class, ['record' => $client->id])
+    Livewire::test(EditClient::class, ['record' => $client->id])
         ->fillForm(['consultant_id' => $consultant->id])
         ->call('save')
         ->assertHasNoFormErrors();
@@ -80,7 +80,7 @@ test('a consultant can be assigned to a client via the edit page', function () {
 test('the consultant filter on the clients list is only visible to admins', function () {
     $this->user->assignRole('admin');
 
-    Livewire::test(ListEducationClients::class)
+    Livewire::test(ListClients::class)
         ->assertTableFilterVisible('consultant_id');
 
     $consultant = User::factory()->create(['company_id' => $this->user->company_id]);
@@ -90,7 +90,7 @@ test('the consultant filter on the clients list is only visible to admins', func
     Cache::put("user.{$consultant->id}.active_industry", 'education');
     Cache::put("user.{$consultant->id}.active_industry_id", Industry::where('slug', 'education')->value('id'));
 
-    Livewire::test(ListEducationClients::class)
+    Livewire::test(ListClients::class)
         ->assertTableFilterHidden('consultant_id');
 });
 
@@ -100,21 +100,21 @@ test('the clients list can be filtered by consultant', function () {
     $consultant = User::factory()->create(['company_id' => $this->user->company_id]);
     $consultant->assignRole('consultant');
 
-    $matchingClient = EducationClient::factory()->create([
+    $matchingClient = Client::factory()->create([
         'company_id' => $this->user->company_id,
         'consultant_id' => $consultant->id,
     ]);
 
-    $otherClient = EducationClient::factory()->create(['company_id' => $this->user->company_id]);
+    $otherClient = Client::factory()->create(['company_id' => $this->user->company_id]);
 
-    Livewire::test(ListEducationClients::class)
+    Livewire::test(ListClients::class)
         ->filterTable('consultant_id', $consultant->id)
         ->assertCanSeeTableRecords([$matchingClient])
         ->assertCanNotSeeTableRecords([$otherClient]);
 });
 
 test('it can create an education client', function () {
-    $client = EducationClient::factory()->create([
+    $client = Client::factory()->create([
         'name' => 'Applebough Recruitment Ltd',
         'client_type' => 'School',
         'city' => 'Halesowen',
@@ -130,7 +130,7 @@ test('it can create an education client', function () {
 });
 
 test('it has soft deletes', function () {
-    $client = EducationClient::factory()->create();
+    $client = Client::factory()->create();
 
     $client->delete();
 
@@ -138,9 +138,9 @@ test('it has soft deletes', function () {
 });
 
 test('a contact can be added via the Contacts tab on the edit page', function () {
-    $client = EducationClient::factory()->create(['company_id' => $this->user->company_id]);
+    $client = Client::factory()->create(['company_id' => $this->user->company_id]);
 
-    Livewire::test(EditEducationClient::class, ['record' => $client->id])
+    Livewire::test(EditClient::class, ['record' => $client->id])
         ->fillForm([
             'contacts' => [
                 'contact-1' => [
@@ -154,7 +154,7 @@ test('a contact can be added via the Contacts tab on the edit page', function ()
         ->call('save')
         ->assertHasNoFormErrors();
 
-    $contact = ClientContact::where('education_client_id', $client->id)->first();
+    $contact = ClientContact::where('client_id', $client->id)->first();
 
     expect($contact)->not->toBeNull()
         ->and($contact->first_name)->toBe('Ashley')
@@ -163,17 +163,17 @@ test('a contact can be added via the Contacts tab on the edit page', function ()
 });
 
 test('setting a contact as main unsets the previous main contact', function () {
-    $client = EducationClient::factory()->create(['company_id' => $this->user->company_id]);
+    $client = Client::factory()->create(['company_id' => $this->user->company_id]);
 
     $firstContact = ClientContact::factory()->create([
         'company_id' => $this->user->company_id,
-        'education_client_id' => $client->id,
+        'client_id' => $client->id,
         'main_contact' => true,
     ]);
 
     $secondContact = ClientContact::factory()->create([
         'company_id' => $this->user->company_id,
-        'education_client_id' => $client->id,
+        'client_id' => $client->id,
         'main_contact' => true,
     ]);
 

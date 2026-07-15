@@ -3,19 +3,19 @@
 namespace App\Services\Booking;
 
 use App\Enums\BookingDayPeriod;
-use App\Models\EducationBooking;
-use App\Models\EducationBookingDayPeriod;
+use App\Models\Booking;
+use App\Models\BookingDay;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Collection;
 
 class BookingDayPeriods
 {
     /** @return Collection<int, array{date: Carbon, period: BookingDayPeriod, start: string, rate: ?float, hours: ?float}> */
-    public static function rows(EducationBooking $booking, string $rateType = 'pay'): Collection
+    public static function rows(Booking $booking, string $rateType = 'pay'): Collection
     {
         $rates = self::rates($booking, $rateType);
 
-        return $booking->dayPeriods->map(fn (EducationBookingDayPeriod $dayPeriod): array => [
+        return $booking->dayPeriods->map(fn (BookingDay $dayPeriod): array => [
             'date' => $dayPeriod->date,
             'period' => $dayPeriod->period,
             'start' => self::formatTimes($dayPeriod),
@@ -24,7 +24,7 @@ class BookingDayPeriods
         ]);
     }
 
-    private static function totalHours(EducationBookingDayPeriod $dayPeriod): ?float
+    private static function totalHours(BookingDay $dayPeriod): ?float
     {
         if ($dayPeriod->period !== BookingDayPeriod::Hours || ! $dayPeriod->time_from || ! $dayPeriod->time_to) {
             return null;
@@ -33,7 +33,7 @@ class BookingDayPeriods
         return round(abs(Carbon::parse($dayPeriod->time_from)->diffInMinutes(Carbon::parse($dayPeriod->time_to))) / 60, 2);
     }
 
-    private static function formatTimes(EducationBookingDayPeriod $dayPeriod): string
+    private static function formatTimes(BookingDay $dayPeriod): string
     {
         if (! $dayPeriod->time_from) {
             return '';
@@ -49,7 +49,7 @@ class BookingDayPeriods
     }
 
     /** @return array<string, ?float> */
-    private static function rates(EducationBooking $booking, string $rateType): array
+    private static function rates(Booking $booking, string $rateType): array
     {
         return $rateType === 'charge'
             ? [

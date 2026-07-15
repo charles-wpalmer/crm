@@ -2,7 +2,7 @@
 
 namespace App\Jobs;
 
-use App\Models\EducationBooking;
+use App\Models\Booking;
 use App\Services\Education\BookingConfirmationPdfService;
 use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Foundation\Queue\Queueable;
@@ -18,7 +18,7 @@ class GenerateBookingConfirmationPdf implements ShouldQueue
     public int $backoff = 60;
 
     public function __construct(
-        public readonly EducationBooking $booking,
+        public readonly Booking $booking,
     ) {}
 
     /**

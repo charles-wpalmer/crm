@@ -8,12 +8,12 @@ use App\Enums\EmailTemplateType;
 use App\Jobs\GenerateBookingConfirmationPdf;
 use App\Jobs\SendBookingConfirmationEmail;
 use App\Jobs\SendClientBookingConfirmationEmail;
+use App\Models\Booking;
 use App\Models\CandidateActivity;
+use App\Models\Client;
 use App\Models\ClientActivity;
 use App\Models\Company;
-use App\Models\EducationBooking;
 use App\Models\EducationCandidate;
-use App\Models\EducationClient;
 use App\Models\EmailTemplate;
 use App\Models\Industry;
 use App\Models\JobTitle;
@@ -39,7 +39,7 @@ beforeEach(function () {
         'name' => 'Planning Teacher',
     ]);
 
-    $this->client = EducationClient::factory()->create(['company_id' => $this->company->id]);
+    $this->client = Client::factory()->create(['company_id' => $this->company->id]);
 
     $this->candidate = EducationCandidate::factory()->create([
         'company_id' => $this->company->id,
@@ -52,9 +52,9 @@ beforeEach(function () {
         'dbs_certificate_number' => '001912886570',
     ]);
 
-    $this->booking = EducationBooking::factory()->create([
+    $this->booking = Booking::factory()->create([
         'company_id' => $this->company->id,
-        'education_client_id' => $this->client->id,
+        'client_id' => $this->client->id,
         'candidate_id' => $this->candidate->id,
         'candidate_type' => EducationCandidate::class,
         'job_title_id' => $this->jobTitle->id,

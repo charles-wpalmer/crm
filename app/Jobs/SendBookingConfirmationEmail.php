@@ -5,7 +5,7 @@ namespace App\Jobs;
 use App\Enums\ActivityType;
 use App\Enums\EmailProvider;
 use App\Enums\EmailTemplateType;
-use App\Models\EducationBooking;
+use App\Models\Booking;
 use App\Models\EmailTemplate;
 use App\Services\Booking\BookingDayPeriods;
 use App\Services\Education\BookingConfirmationLink;
@@ -25,7 +25,7 @@ class SendBookingConfirmationEmail implements ShouldQueue
     public int $backoff = 60;
 
     public function __construct(
-        public readonly EducationBooking $booking,
+        public readonly Booking $booking,
     ) {}
 
     /**
@@ -78,7 +78,7 @@ class SendBookingConfirmationEmail implements ShouldQueue
     private function replacePlaceholders(string $content): string
     {
         $candidate = $this->booking->candidate;
-        $client = $this->booking->education_client;
+        $client = $this->booking->client;
 
         $title = $candidate->title ? rtrim($candidate->title, '.').'.' : '';
         $candidateName = trim(collect([$title, $candidate->first_name, $candidate->last_name])->filter()->implode(' '));

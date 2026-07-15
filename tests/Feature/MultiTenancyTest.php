@@ -1,9 +1,9 @@
 <?php
 
+use App\Models\Client;
 use App\Models\Company;
 use App\Models\Industry;
 use App\Models\User;
-use App\Models\EducationClient;
 
 test('a user belongs to a company and can have multiple industries', function () {
     $company = Company::factory()->create();
@@ -35,10 +35,10 @@ test('an education client is scoped to the authenticated user company', function
     $user = User::factory()->create(['company_id' => $company1->id]);
     $this->actingAs($user);
 
-    $client1 = EducationClient::factory()->create(['company_id' => $company1->id]);
-    $client2 = EducationClient::factory()->create(['company_id' => $company2->id]);
+    $client1 = Client::factory()->create(['company_id' => $company1->id]);
+    $client2 = Client::factory()->create(['company_id' => $company2->id]);
 
-    $clients = EducationClient::all();
+    $clients = Client::all();
 
     expect($clients)->toHaveCount(1)
         ->and($clients->first()->id)->toBe($client1->id);

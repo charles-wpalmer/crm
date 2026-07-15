@@ -4,8 +4,8 @@ namespace App\Services\Education;
 
 use App\Enums\DocumentType;
 use App\Enums\ReferenceStatus;
+use App\Models\Booking;
 use App\Models\CandidateDocument;
-use App\Models\EducationBooking;
 use App\Models\EducationCandidate;
 use App\Services\Booking\BookingDayPeriods;
 use Barryvdh\DomPDF\Facade\Pdf;
@@ -14,7 +14,7 @@ use setasign\Fpdi\Fpdi;
 
 class BookingConfirmationPdfService
 {
-    public function generate(EducationBooking $booking): string
+    public function generate(Booking $booking): string
     {
         /** @var EducationCandidate $candidate */
         $candidate = $booking->candidate;

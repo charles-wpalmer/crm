@@ -3,7 +3,7 @@
 namespace App\Services\Booking;
 
 use App\Enums\BookingDayPeriod;
-use App\Models\EducationBookingDayPeriod;
+use App\Models\BookingDay;
 use Carbon\Carbon;
 use Illuminate\Support\Collection;
 
@@ -24,13 +24,13 @@ class BookingOverlap
             return collect();
         }
 
-        $existing = EducationBookingDayPeriod::query()
+        $existing = BookingDay::query()
             ->where(function ($query) use ($incoming): void {
                 foreach ($incoming->keys() as $date) {
                     $query->orWhereDate('date', $date);
                 }
             })
-            ->whereHas('educationBooking', function ($query) use ($candidateType, $candidateId, $excludingBookingId): void {
+            ->whereHas('booking', function ($query) use ($candidateType, $candidateId, $excludingBookingId): void {
                 $query->where('candidate_id', $candidateId)
                     ->where('candidate_type', $candidateType)
                     ->when($excludingBookingId, fn ($query) => $query->where('id', '!=', $excludingBookingId));
@@ -38,7 +38,7 @@ class BookingOverlap
             ->get();
 
         return $existing
-            ->filter(function (EducationBookingDayPeriod $period) use ($incoming): bool {
+            ->filter(function (BookingDay $period) use ($incoming): bool {
                 $incomingEntry = $incoming->get($period->date->toDateString());
 
                 if (! $incomingEntry) {
@@ -54,7 +54,7 @@ class BookingOverlap
                     otherTimeTo: $incomingEntry['time_to'] ?? null,
                 );
             })
-            ->map(fn (EducationBookingDayPeriod $period): string => $period->date->toDateString())
+            ->map(fn (BookingDay $period): string => $period->date->toDateString())
             ->unique()
             ->sort()
             ->values();

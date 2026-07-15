@@ -2,18 +2,18 @@
 
 namespace App\Services\Education;
 
-use App\Models\EducationBooking;
+use App\Models\Booking;
 use Illuminate\Contracts\Encryption\DecryptException;
 use Illuminate\Support\Facades\Crypt;
 
 class BookingConfirmationLink
 {
-    public static function encode(EducationBooking $booking): string
+    public static function encode(Booking $booking): string
     {
         return Crypt::encryptString((string) $booking->id);
     }
 
-    public static function decode(string $crypt): ?EducationBooking
+    public static function decode(string $crypt): ?Booking
     {
         try {
             $id = Crypt::decryptString($crypt);
@@ -21,10 +21,10 @@ class BookingConfirmationLink
             return null;
         }
 
-        return EducationBooking::withTrashed()->find($id);
+        return Booking::withTrashed()->find($id);
     }
 
-    public static function url(EducationBooking $booking): string
+    public static function url(Booking $booking): string
     {
         return route('booking-confirmation.show', ['crypt' => self::encode($booking)]);
     }
