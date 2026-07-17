@@ -37,7 +37,59 @@ class Booking extends Model
             'hourly_charge_rate' => Money::class,
             'day_charge_rate' => Money::class,
             'half_day_charge_rate' => Money::class,
+            'disputed_at' => 'datetime',
         ];
+    }
+
+    public function isApproved(): bool
+    {
+        return $this->status === BookingStatus::Approved;
+    }
+
+    public function isDisputed(): bool
+    {
+        return $this->disputed_at !== null;
+    }
+
+    /**
+     * Recompute the booking's overall approval/dispute state from its day periods
+     * that have been sent for payroll confirmation.
+     */
+    public function refreshPayrollStatus(): void
+    {
+        $sentDays = $this->dayPeriods()->whereNotNull('payroll_confirmation_sent_at')->get();
+
+        if ($sentDays->isEmpty()) {
+            return;
+        }
+
+        $latestDispute = $sentDays->filter(fn (BookingDay $day): bool => $day->isDisputed())
+            ->sortByDesc('disputed_at')
+            ->first();
+
+        if ($latestDispute) {
+            $this->update([
+                'disputed_at' => $latestDispute->disputed_at,
+                'dispute_reason' => $latestDispute->dispute_reason,
+            ]);
+
+            return;
+        }
+
+        if ($sentDays->every(fn (BookingDay $day): bool => $day->isApproved())) {
+            $this->update([
+                'status' => BookingStatus::Approved,
+                'disputed_at' => null,
+                'dispute_reason' => null,
+            ]);
+
+            return;
+        }
+
+        $this->update([
+            'disputed_at' => null,
+            'dispute_reason' => null,
+        ]);
     }
 
     public function client(): BelongsTo

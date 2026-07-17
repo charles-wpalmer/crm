@@ -89,8 +89,31 @@ test('submitting the form dispatches a job per uploaded CV and resets the form',
             && $job->industrySlug === 'education'
             && $job->candidateStatusId === $this->status->id
             && $job->skillIds === [$skill->id]
-            && $job->sendApplicationEmail === false;
+            && $job->sendApplicationEmail === false
+            && $job->consultantId === $this->user->id;
     });
+});
+
+test('the job assigns the created candidate to the given consultant', function () {
+    CvParser::fake(fn () => [
+        'firstName' => 'Jane',
+        'lastName' => 'Doe',
+        'email' => 'jane@example.com',
+    ]);
+
+    $path = UploadedFile::fake()->create('cv.pdf', 100, 'application/pdf')->store('bulk-cv-uploads', 'local');
+
+    (new ProcessBulkCvUpload(
+        filePath: $path,
+        companyId: $this->user->company_id,
+        industrySlug: 'education',
+        candidateStatusId: $this->status->id,
+        skillIds: [],
+        sendApplicationEmail: false,
+        consultantId: $this->user->id,
+    ))->handle(app(CvParserService::class));
+
+    expect(EducationCandidate::first()->consultant_id)->toBe($this->user->id);
 });
 
 test('the job creates a candidate from the parsed CV and assigns status, skills, and the CV document', function () {

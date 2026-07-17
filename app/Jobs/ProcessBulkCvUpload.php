@@ -32,6 +32,7 @@ class ProcessBulkCvUpload implements ShouldQueue
         public readonly int $candidateStatusId,
         public readonly array $skillIds,
         public readonly bool $sendApplicationEmail,
+        public readonly ?int $consultantId = null,
     ) {}
 
     public function handle(CvParserService $cvParser): void
@@ -55,6 +56,7 @@ class ProcessBulkCvUpload implements ShouldQueue
         try {
             $candidate = $modelClass::create([
                 'company_id' => $this->companyId,
+                'consultant_id' => $this->consultantId,
                 'first_name' => $extraction->firstName ?: pathinfo($this->filePath, PATHINFO_FILENAME),
                 'middle_name' => $extraction->middleName,
                 'last_name' => $extraction->lastName,
