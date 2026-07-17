@@ -6,6 +6,7 @@ use App\Filament\Pages\Calendar;
 use App\Filament\Pages\CandidateSettings;
 use App\Filament\Pages\ClientSettings;
 use App\Filament\Pages\Dashboard;
+use App\Filament\Pages\RunPayroll;
 use App\Http\Middleware\SetActiveIndustry;
 use Filament\Actions\Action;
 use Filament\Http\Middleware\Authenticate;
@@ -76,6 +77,7 @@ class AdminPanelProvider extends PanelProvider
                 CandidateSettings::class,
                 ClientSettings::class,
                 Calendar::class,
+                RunPayroll::class,
             ])
             ->widgets([
                 //

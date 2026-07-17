@@ -8,6 +8,7 @@ enum EmailTemplateType: string
     case Application = 'application';
     case CandidateBookingConfirmation = 'candidate_booking_confirmation';
     case ClientBookingConfirmation = 'client_booking_confirmation';
+    case PayrollConfirmation = 'payroll_confirmation';
 
     public function label(): string
     {
@@ -16,6 +17,7 @@ enum EmailTemplateType: string
             self::Application => 'Application Email',
             self::CandidateBookingConfirmation => 'Candidate Booking Confirmation Email',
             self::ClientBookingConfirmation => 'Client Booking Confirmation Email',
+            self::PayrollConfirmation => 'Payroll Confirmation Email',
         };
     }
 }

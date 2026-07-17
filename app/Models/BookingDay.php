@@ -19,12 +19,40 @@ class BookingDay extends Model
             'date' => 'date',
             'period' => BookingDayPeriod::class,
             'cancelled_at' => 'datetime',
+            'payroll_confirmation_sent_at' => 'datetime',
+            'approved_at' => 'datetime',
+            'disputed_at' => 'datetime',
         ];
     }
 
     public function isCancelled(): bool
     {
         return $this->cancelled_at !== null;
+    }
+
+    public function isPayrollConfirmationSent(): bool
+    {
+        return $this->payroll_confirmation_sent_at !== null;
+    }
+
+    public function isApproved(): bool
+    {
+        return $this->approved_at !== null;
+    }
+
+    public function isDisputed(): bool
+    {
+        return $this->disputed_at !== null;
+    }
+
+    public function payrollStatus(): string
+    {
+        return match (true) {
+            $this->isDisputed() => 'disputed',
+            $this->isApproved() => 'approved',
+            $this->isPayrollConfirmationSent() => 'sent',
+            default => 'pending',
+        };
     }
 
     public function booking(): BelongsTo
