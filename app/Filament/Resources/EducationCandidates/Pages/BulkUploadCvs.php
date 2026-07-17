@@ -108,6 +108,7 @@ class BulkUploadCvs extends Page implements HasForms
                 candidateStatusId: $data['candidate_status_id'],
                 skillIds: $this->skillIds,
                 sendApplicationEmail: (bool) ($data['send_application_email'] ?? false),
+                consultantId: Auth::id(),
             );
         }
 

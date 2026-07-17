@@ -2,16 +2,16 @@
 
 namespace App\Filament\Pages\Dashboards;
 
-use App\Filament\Widgets\BookingsPerDayChart;
-use App\Filament\Widgets\EducationStatsOverview;
+use App\Filament\Widgets\EducationConsultantKpiOverview;
+use App\Filament\Widgets\EducationConsultantLeaderboard;
 
 class EducationDashboard implements DashboardInterface
 {
     public function getWidgets(): array
     {
         return [
-            EducationStatsOverview::class,
-            BookingsPerDayChart::class,
+            EducationConsultantKpiOverview::class,
+            EducationConsultantLeaderboard::class,
         ];
     }
 
