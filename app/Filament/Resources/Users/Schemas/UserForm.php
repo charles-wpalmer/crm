@@ -8,7 +8,6 @@ use Filament\Forms\Components\TextInput;
 use Filament\Schemas\Components\Section;
 use Filament\Schemas\Components\Utilities\Get;
 use Filament\Schemas\Schema;
-use Illuminate\Database\Eloquent\Model;
 use Spatie\Permission\Models\Role;
 
 class UserForm
@@ -17,6 +16,17 @@ class UserForm
     {
         return $schema
             ->components([
+                Section::make('Company')
+                    ->schema([
+                        Select::make('company_id')
+                            ->label('Company')
+                            ->relationship('company', 'name')
+                            ->required()
+                            ->live()
+                            ->searchable()
+                            ->preload(),
+                    ]),
+
                 Section::make('User Details')
                     ->columns(2)
                     ->schema([
@@ -53,8 +63,8 @@ class UserForm
                     ->schema([
                         Select::make('client_contact_id')
                             ->label('Client Contact')
-                            ->options(fn (): array => ClientContact::query()
-                                ->where('company_id', auth()->user()->company_id)
+                            ->options(fn (Get $get): array => ClientContact::withoutGlobalScope('company')
+                                ->where('company_id', $get('company_id'))
                                 ->get()
                                 ->mapWithKeys(fn (ClientContact $contact): array => [
                                     $contact->id => trim("{$contact->first_name} {$contact->last_name}").($contact->client ? " ({$contact->client->name})" : ''),
@@ -73,11 +83,11 @@ class UserForm
                             ->relationship(
                                 name: 'industries',
                                 titleAttribute: 'name',
-                                modifyQueryUsing: fn ($query, ?Model $record) => $query
-                                    ->whereIn('industries.id', function ($sub) use ($record) {
+                                modifyQueryUsing: fn ($query, Get $get) => $query
+                                    ->whereIn('industries.id', function ($sub) use ($get) {
                                         $sub->select('industry_id')
                                             ->from('company_industry')
-                                            ->where('company_id', $record?->company_id ?? auth()->user()->company_id);
+                                            ->where('company_id', $get('company_id'));
                                     }),
                             )
                             ->preload(),

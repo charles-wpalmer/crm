@@ -38,7 +38,10 @@ class RunPayroll extends Page implements HasTable
 
     public static function canAccess(): bool
     {
-        return auth()->user()?->isAdmin() ?? false;
+        // Impersonation logs the site_admin in as the target company's actual
+        // admin user, so this excludes their own site_admin account without
+        // needing to check the impersonation session state directly.
+        return auth()->user()?->hasRole('admin') ?? false;
     }
 
     public function mount(): void

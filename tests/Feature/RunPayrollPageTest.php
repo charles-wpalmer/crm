@@ -67,6 +67,14 @@ test('an admin can access the run payroll page', function () {
     Livewire::test(RunPayroll::class)->assertSuccessful();
 });
 
+test('a site_admin cannot access the run payroll page unless impersonating', function () {
+    $siteAdmin = User::factory()->create();
+    $siteAdmin->assignRole('site_admin');
+    $this->actingAs($siteAdmin);
+
+    expect(RunPayroll::canAccess())->toBeFalse();
+});
+
 test('the confirm action dispatches one payroll confirmation email per distinct client with bookings this period', function () {
     Queue::fake();
 

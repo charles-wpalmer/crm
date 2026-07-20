@@ -57,6 +57,7 @@ class UserResource extends Resource
     public static function getEloquentQuery(): Builder
     {
         return parent::getEloquentQuery()
+            ->withoutGlobalScope('company')
             ->whereNull('candidate_id');
     }
 
