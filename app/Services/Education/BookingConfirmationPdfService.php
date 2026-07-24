@@ -8,6 +8,7 @@ use App\Models\Booking;
 use App\Models\CandidateDocument;
 use App\Models\EducationCandidate;
 use App\Services\Booking\BookingDayPeriods;
+use App\Services\Candidates\Document;
 use Barryvdh\DomPDF\Facade\Pdf;
 use Illuminate\Support\Facades\Storage;
 use setasign\Fpdi\Fpdi;

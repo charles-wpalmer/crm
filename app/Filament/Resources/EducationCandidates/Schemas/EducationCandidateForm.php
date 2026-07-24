@@ -11,6 +11,7 @@ use App\Enums\ReferenceType;
 use App\Exceptions\Dbs\DbsUpdateServiceException;
 use App\Filament\Resources\EducationVetting\VettingResource;
 use App\Filament\Widgets\CandidateActivityTimeline;
+use App\Filament\Widgets\CandidateDocumentManager;
 use App\Models\CandidateDocument;
 use App\Models\CandidateSkill;
 use App\Models\EducationCandidate;
@@ -539,6 +540,13 @@ class EducationCandidateForm
                                     ->collapsible()
                                     ->collapsed()
                                     ->columnSpanFull(),
+                            ]),
+
+                        Tab::make('Documents')
+                            ->schema([
+                                LivewireComponent::make(CandidateDocumentManager::class)
+                                    ->key('candidate-document-manager')
+                                    ->hidden(fn (?Model $record): bool => $record === null),
                             ]),
 
                         Tab::make('Compliance')

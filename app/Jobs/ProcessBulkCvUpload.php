@@ -6,7 +6,7 @@ use App\DTOs\CvExtraction;
 use App\Enums\DocumentType;
 use App\Models\Industry;
 use App\Services\Ai\CvParserService;
-use App\Services\Education\Document;
+use App\Services\Candidates\Document;
 use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\UniqueConstraintViolationException;

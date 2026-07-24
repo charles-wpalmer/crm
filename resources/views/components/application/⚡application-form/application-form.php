@@ -13,7 +13,7 @@ use App\Models\Qualification;
 use App\Models\User;
 use App\Services\Ai\CvParserService;
 use App\Services\ApplicationAccessSession;
-use App\Services\Education\Document;
+use App\Services\Candidates\Document;
 use Filament\Notifications\Notification;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Collection;
