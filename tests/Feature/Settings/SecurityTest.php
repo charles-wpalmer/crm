@@ -52,6 +52,51 @@ test('security settings page can be rendered', function () {
     $response->assertSee('Enable 2FA');
 });
 
+test('being redirected here because of incomplete account setup shows an explanatory notice', function () {
+    $user = User::factory()->create(['requires_account_setup' => true]);
+
+    $this->actingAs($user)
+        ->withSession(['auth.password_confirmed_at' => time()])
+        ->followingRedirects()
+        ->get('/crm')
+        ->assertOk()
+        ->assertSee('An administrator set your initial password — please choose a new one before continuing.');
+});
+
+test('visiting the security page directly, not via a redirect, shows no notice', function () {
+    $user = User::factory()->create();
+
+    $this->actingAs($user)
+        ->withSession(['auth.password_confirmed_at' => time()])
+        ->get(route('security.edit'))
+        ->assertOk()
+        ->assertDontSee('An administrator set your initial password');
+});
+
+test('the appearance tab link is hidden while account setup is incomplete', function () {
+    $user = User::factory()->create(['requires_account_setup' => true]);
+
+    $this->actingAs($user)
+        ->withSession(['auth.password_confirmed_at' => time()])
+        ->get(route('security.edit'))
+        ->assertOk()
+        ->assertDontSee(route('appearance.edit'), false);
+});
+
+test('the appearance tab link is visible once account setup is complete', function () {
+    $user = User::factory()->create([
+        'requires_account_setup' => true,
+        'password_changed_at' => now(),
+        'two_factor_confirmed_at' => now(),
+    ]);
+
+    $this->actingAs($user)
+        ->withSession(['auth.password_confirmed_at' => time()])
+        ->get(route('security.edit'))
+        ->assertOk()
+        ->assertSee(route('appearance.edit'), false);
+});
+
 test('security settings page requires password confirmation when enabled', function () {
     $user = User::factory()->create();
 

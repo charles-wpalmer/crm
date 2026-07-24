@@ -40,20 +40,31 @@ test('a user who requires account setup is redirected to the security page from 
     $this->actingAs($user)->get('/client')->assertRedirect(route('security.edit'));
 });
 
-test('having changed password but not set up two factor still requires setup', function () {
+test('a redirect to the security page flashes a session notice explaining why', function () {
+    $user = User::factory()->create(['requires_account_setup' => true]);
+
+    $this->actingAs($user)->get('/crm');
+
+    expect(session('account_setup_notice'))
+        ->toBe('An administrator set your initial password — please choose a new one before continuing.');
+});
+
+test('having not set up two factor no longer requires setup, only a password reset does', function () {
     $user = User::factory()->create([
         'requires_account_setup' => true,
         'password_changed_at' => now(),
+        'two_factor_confirmed_at' => null,
     ]);
 
-    expect($user->mustCompleteAccountSetup())->toBeTrue();
+    expect($user->mustCompleteAccountSetup())->toBeFalse();
 
-    $this->actingAs($user)->get('/crm')->assertRedirect(route('security.edit'));
+    $this->actingAs($user)->get('/crm')->assertOk();
 });
 
-test('having set up two factor but not changed password still requires setup', function () {
+test('not having changed password still requires setup regardless of two factor', function () {
     $user = User::factory()->create([
         'requires_account_setup' => true,
+        'password_changed_at' => null,
         'two_factor_confirmed_at' => now(),
     ]);
 
@@ -62,11 +73,10 @@ test('having set up two factor but not changed password still requires setup', f
     $this->actingAs($user)->get('/crm')->assertRedirect(route('security.edit'));
 });
 
-test('completing both password reset and two factor setup lifts the restriction', function () {
+test('changing password lifts the restriction', function () {
     $user = User::factory()->create([
         'requires_account_setup' => true,
         'password_changed_at' => now(),
-        'two_factor_confirmed_at' => now(),
     ]);
 
     expect($user->mustCompleteAccountSetup())->toBeFalse();

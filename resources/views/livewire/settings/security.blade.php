@@ -4,6 +4,10 @@
     <flux:heading class="sr-only">{{ __('Security settings') }}</flux:heading>
 
     <x-settings.layout :heading="__('Update password')" :subheading="__('Ensure your account is using a long, random password to stay secure')">
+        @if (session('account_setup_notice'))
+            <flux:callout variant="warning" icon="exclamation-triangle" :heading="session('account_setup_notice')" class="mt-6" />
+        @endif
+
         <form method="POST" wire:submit="updatePassword" class="mt-6 space-y-6">
             <flux:input
                 wire:model="current_password"

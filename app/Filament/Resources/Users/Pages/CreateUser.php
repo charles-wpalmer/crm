@@ -11,8 +11,7 @@ class CreateUser extends CreateRecord
 
     /**
      * A site admin sets this user's initial password directly, so they must
-     * change it — and set up two-factor authentication — before doing
-     * anything else.
+     * change it before doing anything else.
      *
      * @param  array<string, mixed>  $data
      */

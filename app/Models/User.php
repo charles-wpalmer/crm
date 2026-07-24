@@ -64,25 +64,16 @@ class User extends Authenticatable implements FilamentUser, PasskeyUser
     /**
      * True once the user has changed the password an admin set for them.
      * Only meaningful for accounts a site admin created or reset — everyone
-     * else is exempt regardless of these underlying timestamps.
+     * else is exempt regardless of this underlying timestamp.
      */
     public function mustResetPassword(): bool
     {
         return $this->requires_account_setup && $this->password_changed_at === null;
     }
 
-    /**
-     * True until the user has confirmed two-factor authentication is set up.
-     * Only meaningful for accounts a site admin created or reset.
-     */
-    public function mustSetUpTwoFactor(): bool
-    {
-        return $this->requires_account_setup && $this->two_factor_confirmed_at === null;
-    }
-
     public function mustCompleteAccountSetup(): bool
     {
-        return $this->mustResetPassword() || $this->mustSetUpTwoFactor();
+        return $this->mustResetPassword();
     }
 
     /**
