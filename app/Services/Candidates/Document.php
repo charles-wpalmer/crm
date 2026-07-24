@@ -1,6 +1,6 @@
 <?php
 
-namespace App\Services\Education;
+namespace App\Services\Candidates;
 
 use App\Models\Industry;
 use Illuminate\Database\Eloquent\Model;

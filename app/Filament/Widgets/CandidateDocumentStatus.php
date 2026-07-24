@@ -2,7 +2,7 @@
 
 namespace App\Filament\Widgets;
 
-use App\Services\Education\CandidateDocumentRequirements;
+use App\Services\Candidates\CandidateDocumentRequirements;
 use Filament\Actions\Action;
 use Filament\Tables\Columns\TextColumn;
 use Filament\Tables\Table;

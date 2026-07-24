@@ -1,6 +1,6 @@
 <?php
 
-namespace App\Services\Education;
+namespace App\Services\Candidates;
 
 use App\Models\EducationCandidate;
 use App\Models\HealthcareCandidate;

@@ -11,7 +11,7 @@ use App\Models\Industry;
 use App\Models\Qualification;
 use App\Models\User;
 use App\Services\ApplicationAccessSession;
-use App\Services\Education\Document;
+use App\Services\Candidates\Document;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Validation\Rules\Password;
 use Livewire\Attributes\Layout;
