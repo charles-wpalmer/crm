@@ -34,6 +34,8 @@ class MyBookings extends Page implements HasTable
 
     protected static ?string $title = 'My Bookings';
 
+    protected static ?int $navigationSort = 1;
+
     public function mount(): void
     {
         $this->periodStart = TimesheetPeriod::current($this->periodCompany())['start']->toDateString();

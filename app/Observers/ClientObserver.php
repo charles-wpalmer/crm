@@ -3,11 +3,17 @@
 namespace App\Observers;
 
 use App\Actions\Automations\CheckActions;
+use App\Actions\Clients\EnsureClientCandidatePool;
 use App\Jobs\GeocodeClient;
 use App\Models\Client;
 
 class ClientObserver
 {
+    public function created(Client $client): void
+    {
+        EnsureClientCandidatePool::run($client);
+    }
+
     public function saved(Client $client): void
     {
         if ($client->wasChanged('postcode') || ($client->wasRecentlyCreated && filled($client->postcode))) {

@@ -1,6 +1,6 @@
 <?php
 
-use App\Filament\Client\Widgets\UnratedBookings;
+use App\Filament\Client\Pages\RateBookings;
 use App\Models\Booking;
 use App\Models\Client;
 use App\Models\ClientContact;
@@ -10,6 +10,7 @@ use App\Models\Industry;
 use App\Models\JobTitle;
 use App\Models\User;
 use Database\Seeders\RoleSeeder;
+use Illuminate\Database\Eloquent\ModelNotFoundException;
 use Livewire\Livewire;
 
 beforeEach(function () {
@@ -56,7 +57,7 @@ test('an unrated booking from within the last month is shown', function () {
 
     $this->actingAs($this->user);
 
-    Livewire::test(UnratedBookings::class)
+    Livewire::test(RateBookings::class)
         ->assertCanSeeTableRecords([$booking]);
 });
 
@@ -72,7 +73,7 @@ test('a booking older than a month is not shown', function () {
 
     $this->actingAs($this->user);
 
-    Livewire::test(UnratedBookings::class)
+    Livewire::test(RateBookings::class)
         ->assertCanNotSeeTableRecords([$booking]);
 });
 
@@ -88,7 +89,7 @@ test('a booking that has not started yet is not shown', function () {
 
     $this->actingAs($this->user);
 
-    Livewire::test(UnratedBookings::class)
+    Livewire::test(RateBookings::class)
         ->assertCanNotSeeTableRecords([$booking]);
 });
 
@@ -106,7 +107,7 @@ test('an already rated booking is not shown', function () {
 
     $this->actingAs($this->user);
 
-    Livewire::test(UnratedBookings::class)
+    Livewire::test(RateBookings::class)
         ->assertCanNotSeeTableRecords([$booking]);
 });
 
@@ -124,7 +125,7 @@ test('a booking belonging to another client is not shown', function () {
 
     $this->actingAs($this->user);
 
-    Livewire::test(UnratedBookings::class)
+    Livewire::test(RateBookings::class)
         ->assertCanNotSeeTableRecords([$booking]);
 });
 
@@ -140,9 +141,9 @@ test('a client can rate a candidate out of 5', function () {
 
     $this->actingAs($this->user);
 
-    Livewire::test(UnratedBookings::class)
-        ->callTableAction('rate', $booking, data: ['candidate_rating' => 5])
-        ->assertHasNoTableActionErrors();
+    Livewire::test(RateBookings::class)
+        ->call('rate', $booking->id, 5)
+        ->assertHasNoErrors();
 
     $booking->refresh();
 
@@ -163,15 +164,15 @@ test('a rated booking disappears from the list afterwards', function () {
 
     $this->actingAs($this->user);
 
-    $component = Livewire::test(UnratedBookings::class)
+    $component = Livewire::test(RateBookings::class)
         ->assertCanSeeTableRecords([$booking]);
 
-    $component->callTableAction('rate', $booking, data: ['candidate_rating' => 3]);
+    $component->call('rate', $booking->id, 3);
 
     $component->assertCanNotSeeTableRecords([$booking->fresh()]);
 });
 
-test('a rating is required to submit the rate action', function () {
+test('a rating outside 1 to 5 is rejected', function () {
     $booking = Booking::factory()->create([
         'company_id' => $this->company->id,
         'client_id' => $this->client->id,
@@ -183,14 +184,32 @@ test('a rating is required to submit the rate action', function () {
 
     $this->actingAs($this->user);
 
-    Livewire::test(UnratedBookings::class)
-        ->callTableAction('rate', $booking, data: ['candidate_rating' => null])
-        ->assertHasTableActionErrors(['candidate_rating' => 'required']);
+    Livewire::test(RateBookings::class)->call('rate', $booking->id, 6);
 
     expect($booking->fresh()->candidate_rating)->toBeNull();
 });
 
-test('the unrated bookings widget renders on the my bookings page', function () {
+test('a client cannot rate a booking belonging to another client', function () {
+    $otherClient = Client::factory()->create(['company_id' => $this->company->id]);
+
+    $booking = Booking::factory()->create([
+        'company_id' => $this->company->id,
+        'client_id' => $otherClient->id,
+        'candidate_id' => $this->candidate->id,
+        'candidate_type' => EducationCandidate::class,
+        'job_title_id' => $this->jobTitle->id,
+        'start_date' => now()->subDays(3)->toDateString(),
+    ]);
+
+    $this->actingAs($this->user);
+
+    expect(fn () => Livewire::test(RateBookings::class)->call('rate', $booking->id, 5))
+        ->toThrow(ModelNotFoundException::class);
+
+    expect($booking->fresh()->candidate_rating)->toBeNull();
+});
+
+test('the rate bookings page renders at its own url, separate from my bookings', function () {
     Booking::factory()->create([
         'company_id' => $this->company->id,
         'client_id' => $this->client->id,
@@ -201,8 +220,15 @@ test('the unrated bookings widget renders on the my bookings page', function () 
     ]);
 
     $this->actingAs($this->user)
+        ->get('/client/rate-bookings')
+        ->assertOk()
+        ->assertSee('Rate Candidates')
+        ->assertSee('Jane Doe');
+});
+
+test('the my bookings page no longer shows the ratings list', function () {
+    $this->actingAs($this->user)
         ->get('/client/my-bookings')
         ->assertOk()
-        ->assertSee('Rate Your Candidates')
-        ->assertSee('Jane Doe');
+        ->assertDontSee('Rate Your Candidates');
 });

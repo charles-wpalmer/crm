@@ -101,4 +101,9 @@ class Client extends Model
     {
         return $this->morphMany(PayRate::class, 'model');
     }
+
+    public function candidatePool(): HasOne
+    {
+        return $this->hasOne(CandidatePool::class);
+    }
 }

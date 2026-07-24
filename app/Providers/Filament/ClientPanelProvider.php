@@ -24,6 +24,7 @@ class ClientPanelProvider extends PanelProvider
         return $panel
             ->id('client')
             ->path('client')
+            ->viteTheme('resources/css/filament/client/theme.css')
             ->login(false)
             ->authGuard('web')
             ->colors([
