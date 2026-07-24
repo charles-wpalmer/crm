@@ -40,6 +40,8 @@ class Booking extends Model
             'day_charge_rate' => Money::class,
             'half_day_charge_rate' => Money::class,
             'disputed_at' => 'datetime',
+            'candidate_rating' => 'integer',
+            'candidate_rated_at' => 'datetime',
         ];
     }
 
@@ -51,6 +53,22 @@ class Booking extends Model
     public function isDisputed(): bool
     {
         return $this->disputed_at !== null;
+    }
+
+    public function isRated(): bool
+    {
+        return $this->candidate_rated_at !== null;
+    }
+
+    /**
+     * A client rates the candidate they were booked with, out of 5, once the
+     * booking has taken place.
+     */
+    public function scopeAwaitingCandidateRating(Builder $query): Builder
+    {
+        return $query->whereNull('candidate_rated_at')
+            ->where('start_date', '<=', now())
+            ->where('start_date', '>=', now()->subMonth());
     }
 
     /**

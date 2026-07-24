@@ -7,10 +7,9 @@ use Illuminate\Http\Request;
 use Symfony\Component\HttpFoundation\Response;
 
 /**
- * Blocks a user who still has to reset their password or set up two-factor
- * authentication from doing anything else, until they've done both — used
- * for accounts a site admin creates (or resets the password of), which start
- * with a password only the admin knows.
+ * Blocks a user who still has to reset their password from doing anything
+ * else, until they have — used for accounts a site admin creates (or resets
+ * the password of), which start with a password only the admin knows.
  */
 class EnsureAccountSetupIsComplete
 {
@@ -32,6 +31,8 @@ class EnsureAccountSetupIsComplete
         if ($this->isExempt($request)) {
             return $next($request);
         }
+
+        session()->flash('account_setup_notice', 'An administrator set your initial password — please choose a new one before continuing.');
 
         return redirect()->route('security.edit');
     }
